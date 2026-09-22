@@ -184,22 +184,35 @@ export class CanvasView {
 
   _styleNode(node, layer) {
     const t = layer.transform;
+    const s = layer.style || {};
+
     node.style.left   = t.x + "px";
     node.style.top    = t.y + "px";
     node.style.width  = t.w + "px";
     node.style.height = t.h + "px";
     node.style.transform = t.rot ? `rotate(${t.rot}deg)` : "";
-    const s = layer.style;
+    node.style.opacity  = s.opacity ?? 1;
+    node.style.setProperty("--zone-color", RAG_ZONES[layer.zone]?.color || s.stroke || "var(--accent)");
+    node.classList.toggle("is-hidden", !layer.visible);
+    node.classList.toggle("is-locked", layer.locked);
+    node.classList.toggle("marching-ants", !!s.animateDash);
+    node.style.setProperty("--dash-speed", (s.dashSpeed || 1.2) + "s");
+
+    // Type-specialized render
+    if (layer.type === "connector") return this._styleConnector(node, layer);
+    if (layer.type === "dot")       return this._styleDot(node, layer);
+    if (layer.type === "image")     return this._styleImage(node, layer);
+    if (layer.type === "text")      return this._styleText(node, layer);
+
+    // Default box (rect / circle / group / hotspot)
     node.style.background   = s.fill || "transparent";
     node.style.borderRadius = (s.radius || 0) + "px";
-    node.style.opacity      = s.opacity ?? 1;
     if (s.stroke && s.strokeWidth) {
       node.style.border = `${s.strokeWidth}px ${s.strokeDash ? "dashed" : "solid"} ${s.stroke}`;
-      if (s.strokeDash) node.style.borderStyle = "dashed";
     } else {
       node.style.border = "none";
     }
-    node.style.boxShadow    = s.shadow || "none";
+    node.style.boxShadow = s.shadow || "none";
     if (s.backdrop) {
       node.style.backdropFilter = s.backdrop;
       node.style.webkitBackdropFilter = s.backdrop;
@@ -207,17 +220,10 @@ export class CanvasView {
       node.style.backdropFilter = "";
       node.style.webkitBackdropFilter = "";
     }
-    node.style.setProperty("--zone-color", RAG_ZONES[layer.zone]?.color || "var(--accent)");
-
-    node.classList.toggle("is-hidden", !layer.visible);
-    node.classList.toggle("is-locked", layer.locked);
 
     // Label chip
     let label = node.querySelector(":scope > .node__label");
-    if (!label) {
-      label = el("div", { class: "node__label" });
-      node.append(label);
-    }
+    if (!label) { label = el("div", { class: "node__label" }); node.append(label); }
     label.textContent = layer.name || layer.content?.label || layer.type;
 
     // Zone/hotspot text render
@@ -235,6 +241,185 @@ export class CanvasView {
     } else if (textEl) {
       textEl.remove();
     }
+  }
+
+  _styleDot(node, layer) {
+    const s = layer.style || {};
+    node.style.background = "transparent";
+    node.style.border = "none";
+    node.style.boxShadow = "none";
+    node.style.borderRadius = "50%";
+    node.innerHTML = "";
+    const color = s.fill || s.stroke || "#5e7bf9";
+    const rings = Math.max(1, Math.min(5, s.pulseRings || 3));
+    const speed = s.pulseSpeed || 2.2;
+    const scale = s.pulseScale || 5;
+    // Core dot
+    const core = el("div", { class: "dot-core" });
+    core.style.background = color;
+    node.append(core);
+    // Halos
+    for (let i = 0; i < rings; i++) {
+      const halo = el("div", { class: "dot-halo" });
+      halo.style.background = "transparent";
+      halo.style.border = `1.5px solid ${color}`;
+      halo.style.setProperty("--pulse-scale", scale);
+      halo.style.animationDuration = speed + "s";
+      halo.style.animationDelay = (i * (speed / rings)).toFixed(2) + "s";
+      node.append(halo);
+    }
+    let label = node.querySelector(":scope > .node__label");
+    if (!label) { label = el("div", { class: "node__label" }); node.append(label); }
+    label.textContent = layer.name || "Point";
+  }
+
+  _styleImage(node, layer) {
+    const s = layer.style || {};
+    node.style.background = "transparent";
+    node.style.border = s.stroke && s.strokeWidth ? `${s.strokeWidth}px solid ${s.stroke}` : "none";
+    node.style.boxShadow = s.shadow || "none";
+    node.style.borderRadius = (s.radius || 0) + "px";
+    node.style.overflow = "hidden";
+    let img = node.querySelector(":scope > img.node-img");
+    if (!img) {
+      img = el("img", { class: "node-img", alt: layer.name || "Image" });
+      node.append(img);
+    }
+    if (s.src && img.getAttribute("src") !== s.src) img.src = s.src;
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = s.fit || "contain";
+    img.style.pointerEvents = "none";
+    img.style.userSelect = "none";
+    img.setAttribute("draggable", "false");
+
+    let label = node.querySelector(":scope > .node__label");
+    if (!label) { label = el("div", { class: "node__label" }); node.append(label); }
+    label.textContent = layer.name || "Image";
+  }
+
+  _styleText(node, layer) {
+    const s = layer.style || {};
+    node.style.background = s.fill && s.fill !== "transparent" ? s.fill : "transparent";
+    node.style.border = s.stroke && s.strokeWidth ? `${s.strokeWidth}px solid ${s.stroke}` : "none";
+    node.style.boxShadow = s.shadow || "none";
+    node.style.borderRadius = (s.radius || 0) + "px";
+    node.style.display = "flex";
+    node.style.alignItems = "center";
+    node.style.padding = "6px 10px";
+    let tEl = node.querySelector(":scope > .node__textbody");
+    if (!tEl) {
+      tEl = el("div", { class: "node__textbody" });
+      tEl.style.width = "100%";
+      node.append(tEl);
+    }
+    tEl.textContent = layer.content?.label || "Texte";
+    tEl.style.color = s.textColor || "var(--ink-primary)";
+    tEl.style.fontSize = (s.textSize || 14) + "px";
+    tEl.style.fontWeight = s.textWeight || 500;
+    tEl.style.textAlign = s.textAlign || "left";
+    tEl.style.lineHeight = "1.35";
+    tEl.style.userSelect = "none";
+    tEl.style.pointerEvents = "none";
+
+    let label = node.querySelector(":scope > .node__label");
+    if (!label) { label = el("div", { class: "node__label" }); node.append(label); }
+    label.textContent = layer.name || "Texte";
+  }
+
+  _styleConnector(node, layer) {
+    const s = layer.style || {};
+    const from = layer.from || { x: 0, y: 0 };
+    const to   = layer.to   || { x: 100, y: 0 };
+    // Compute a bounding box that covers both points with a padding
+    const pad = 30;
+    const minX = Math.min(from.x, to.x) - pad;
+    const minY = Math.min(from.y, to.y) - pad;
+    const maxX = Math.max(from.x, to.x) + pad;
+    const maxY = Math.max(from.y, to.y) + pad;
+    const w = Math.max(2, maxX - minX);
+    const h = Math.max(2, maxY - minY);
+    node.style.left = minX + "px";
+    node.style.top  = minY + "px";
+    node.style.width  = w + "px";
+    node.style.height = h + "px";
+    node.style.background = "transparent";
+    node.style.border = "none";
+    node.style.boxShadow = "none";
+    node.style.borderRadius = "0";
+    node.style.overflow = "visible";
+
+    // Persist canonical transform so drag works normally
+    layer.transform.x = minX; layer.transform.y = minY; layer.transform.w = w; layer.transform.h = h;
+
+    const p1 = { x: from.x - minX, y: from.y - minY };
+    const p2 = { x: to.x - minX,   y: to.y - minY };
+    const midX = (p1.x + p2.x) / 2;
+    const midY = (p1.y + p2.y) / 2;
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const curveAmt = (s.curve ?? 0.5);
+    // Perpendicular offset scaled by distance
+    const dist = Math.hypot(dx, dy) || 1;
+    const nx = -dy / dist, ny = dx / dist;
+    const cX = midX + nx * dist * 0.25 * curveAmt;
+    const cY = midY + ny * dist * 0.25 * curveAmt;
+
+    const stroke = s.stroke || "#5e7bf9";
+    const sw = s.strokeWidth || 2;
+    const dash = s.strokeDash || "";
+    const arrow = s.arrowEnd !== false;
+    const arrowId = "arr_" + layer.id;
+
+    // Build SVG
+    node.innerHTML = `
+      <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;overflow:visible">
+        <defs>
+          <marker id="${arrowId}" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L12,6 L0,12 Z" fill="${stroke}"/>
+          </marker>
+        </defs>
+        <path d="M ${p1.x} ${p1.y} Q ${cX} ${cY} ${p2.x} ${p2.y}"
+              fill="none"
+              stroke="${stroke}"
+              stroke-width="${sw}"
+              stroke-linecap="round"
+              ${dash ? `stroke-dasharray="${dash}"` : ""}
+              ${s.animateDash ? `class="connector-dash"` : ""}
+              ${arrow ? `marker-end="url(#${arrowId})"` : ""} />
+      </svg>
+      <div class="connector-handle" data-h="from" style="left:${p1.x}px;top:${p1.y}px"></div>
+      <div class="connector-handle" data-h="to"   style="left:${p2.x}px;top:${p2.y}px"></div>
+    `;
+
+    // Wire connector handles for drag
+    node.querySelectorAll(".connector-handle").forEach(h => {
+      h.addEventListener("mousedown", (e) => {
+        e.stopPropagation(); e.preventDefault();
+        const which = h.dataset.h;
+        const zoom = this.zoom;
+        const move = (ev) => {
+          const rect = this.stage.getBoundingClientRect();
+          const x = (ev.clientX - rect.left) / zoom;
+          const y = (ev.clientY - rect.top)  / zoom;
+          this.store.patch(s2 => {
+            const target = findLayer(s2.document.layers, layer.id);
+            if (target) target[which] = { x: Math.round(x), y: Math.round(y) };
+          }, "layer:transform");
+          this._emitBatch(layer.id);
+        };
+        const up = () => {
+          window.removeEventListener("mousemove", move);
+          window.removeEventListener("mouseup", up);
+          this.store.transaction(() => {}, "commit");
+        };
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", up);
+      });
+    });
+
+    let label = node.querySelector(":scope > .node__label");
+    if (!label) { label = el("div", { class: "node__label" }); node.append(label); }
+    label.textContent = layer.name || "Connecteur";
   }
 
   _attachInteractions(node, layer) {
@@ -329,8 +514,15 @@ export class CanvasView {
 
   updateSelection() {
     const sel = new Set(this.store.state.selection);
+    // Compute set of linked layers for currently-selected layers
+    const linkedSet = new Set();
+    sel.forEach(id => {
+      const layer = findLayer(this.store.state.document.layers, id);
+      (layer?.linkedTo || []).forEach(lid => linkedSet.add(lid));
+    });
     this.nodeMap.forEach((node, id) => {
       node.classList.toggle("is-selected", sel.has(id));
+      node.classList.toggle("is-linked", !sel.has(id) && linkedSet.has(id));
     });
     this._alignHandles();
   }

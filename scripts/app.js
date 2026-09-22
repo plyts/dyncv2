@@ -12,6 +12,8 @@ import { Topbar } from "./topbar.js";
 import { PreviewFlyout } from "./preview-flyout.js";
 import { Exporter } from "./exporter.js";
 import { Importer } from "./importer.js";
+import { ShapeToolbar } from "./toolbar.js";
+import { makeShape, findLayer } from "./store.js";
 
 const initialState = {
   document: ragScene(),
@@ -62,6 +64,37 @@ const flyout = new PreviewFlyout({
 const canvas = new CanvasView({ store, root: stageEl, flyout });
 const hud    = new CanvasHud({ store, root: hudEl, canvas });
 canvas.hud   = hud;
+
+// Floating shape toolbar
+const toolbarEl = document.createElement("div");
+stageEl.append(toolbarEl);
+const shapeToolbar = new ShapeToolbar({ store, root: toolbarEl, canvas });
+
+// Drag-drop images anywhere on the canvas
+["dragover", "drop"].forEach(ev => stageEl.addEventListener(ev, (e) => e.preventDefault()));
+stageEl.addEventListener("drop", async (e) => {
+  const files = [...(e.dataTransfer?.files || [])].filter(f => f.type.startsWith("image/"));
+  if (!files.length) return;
+  for (const f of files) {
+    const src = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+    const dims = await new Promise(res => { const img = new Image(); img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight }); img.onerror = () => res({ w: 200, h: 140 }); img.src = src; });
+    const stageRect = canvas.stage.getBoundingClientRect();
+    const zoom = canvas.zoom;
+    const cx = Math.round((e.clientX - stageRect.left) / zoom);
+    const cy = Math.round((e.clientY - stageRect.top) / zoom);
+    const w = Math.min(400, dims.w || 200);
+    const h = Math.round(w * (dims.h / (dims.w || 1))) || 140;
+    store.transaction(s => {
+      const layer = makeShape.image({
+        name: f.name.replace(/\.[^.]+$/, "") || "Image",
+        transform: { x: cx - w / 2, y: cy - h / 2, w, h, rot: 0 },
+        style: { ...makeShape.image().style, src },
+      });
+      s.document.layers.push(layer);
+      s.selection = [layer.id];
+    }, "update");
+  }
+});
 
 const inspector = new Inspector({
   store, root: rightEl,

@@ -13,15 +13,23 @@
   font-weight: var(--weight-medium);
   color: var(--ink-primary);
   background: transparent;
+  position: relative;
+  overflow: hidden;
   transition:
     background var(--dur-quick) var(--ease-standard),
     color var(--dur-quick) var(--ease-standard),
-    transform var(--dur-quick) var(--ease-standard),
-    box-shadow var(--dur-quick) var(--ease-standard);
+    transform var(--dur-quick) var(--ease-spring),
+    box-shadow var(--dur-quick) var(--ease-standard),
+    filter var(--dur-quick) var(--ease-standard);
   white-space: nowrap;
 }
-.btn:hover  { background: var(--surface-2); }
-.btn:active { background: var(--surface-3); transform: translateY(0.5px); }
+.btn:hover  { background: var(--surface-2); transform: translateY(-0.5px); }
+.btn:active {
+  background: var(--surface-3);
+  transform: translateY(0.5px) scale(0.98);
+  filter: brightness(0.94);
+  transition: transform 60ms var(--ease-standard), filter 60ms var(--ease-standard);
+}
 .btn:focus-visible { box-shadow: var(--shadow-focus); }
 
 .btn--ghost   { color: var(--ink-secondary); }
@@ -36,10 +44,22 @@
 .btn--accent {
   background: var(--accent);
   color: var(--accent-ink);
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.06),
+    0 4px 12px -4px color-mix(in srgb, var(--accent) 60%, transparent);
 }
-.btn--accent:hover { background: var(--accent-hover); }
-.btn--accent:active { background: var(--accent-pressed); }
+.btn--accent:hover {
+  background: var(--accent-hover);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08),
+    0 8px 20px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+  transform: translateY(-0.5px);
+}
+.btn--accent:active {
+  background: var(--accent-pressed);
+  transform: translateY(0.5px) scale(0.98);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 2px 6px -2px color-mix(in srgb, var(--accent) 50%, transparent);
+}
 
 .btn--danger { color: var(--danger); }
 .btn--danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }

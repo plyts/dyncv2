@@ -137,19 +137,23 @@ export class Exporter {
           };
         }
       } else {
-        // Every non-group visible layer is a hotspot.
-        // Prefer the human-friendly content.label as title; fall back to layer.name.
+        // Every non-group visible layer is a hotspot / shape.
         const key = layer.zone || null;
         const title = (layer.content?.label && layer.content.label.trim()) || layer.name;
         const sub = layer.content?.label && layer.content.label !== layer.name ? layer.name : "";
         hotspots.push({
           id: layer.id,
+          type: layer.type,
           name: title,
           zone: key,
           rect: [layer.transform.x, layer.transform.y, layer.transform.w, layer.transform.h],
           rot:  layer.transform.rot || 0,
           radius: layer.style?.radius || 14,
           color: (key && RAG_ZONES[key]?.color) || layer.style?.stroke || "#5e7bf9",
+          style: layer.style || {},
+          from: layer.from || null,
+          to:   layer.to || null,
+          linkedTo: layer.linkedTo || [],
           sub,
           markdown: layer.content?.markdown || "",
         });
@@ -176,12 +180,17 @@ export class Exporter {
 
     const hotJs = hotspots.map(h => `  {
     id: ${JSON.stringify(h.id)},
+    type: ${JSON.stringify(h.type)},
     name: ${JSON.stringify(h.name)},
     zone: ${JSON.stringify(h.zone)},
     rect: [${h.rect.map(n => Math.round(n)).join(", ")}],
     rot:  ${h.rot},
     radius: ${h.radius},
     color: ${JSON.stringify(h.color)},
+    style: ${JSON.stringify(h.style)},
+    from:  ${h.from ? JSON.stringify({ x: Math.round(h.from.x), y: Math.round(h.from.y) }) : "null"},
+    to:    ${h.to   ? JSON.stringify({ x: Math.round(h.to.x),   y: Math.round(h.to.y) })   : "null"},
+    linkedTo: ${JSON.stringify(h.linkedTo)},
     sub: ${JSON.stringify(h.sub)},
     md: ${JSON.stringify(h.markdown)}
   }`).join(",\n");
@@ -492,6 +501,20 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .zone-label i{width:6px;height:6px;border-radius:50%;background:var(--zc)}
 .stage.has-focus .zone-label:not(.is-active){opacity:0.35}
 
+/* Dynamic shapes */
+.atlas-dot{background:transparent!important;box-shadow:none!important;border:0!important;overflow:visible!important}
+.atlas-dot::before,.atlas-dot::after{display:none!important}
+.atlas-dot .dot-core{position:absolute;inset:15%;border-radius:50%;box-shadow:0 0 12px 0 currentColor;z-index:2}
+.atlas-dot .dot-halo{position:absolute;inset:15%;border-radius:50%;border:1.5px solid;opacity:0;transform-origin:center;animation-name:dot-pulse-out;animation-iteration-count:infinite;animation-timing-function:cubic-bezier(0.16,1,0.3,1)}
+@keyframes dot-pulse-out{0%{opacity:0.75;transform:scale(1)}70%{opacity:0;transform:scale(var(--pulse-scale,5))}100%{opacity:0;transform:scale(var(--pulse-scale,5))}}
+.atlas-text{background:transparent!important;box-shadow:none!important;border:0!important}
+.atlas-text::before,.atlas-text::after{display:none!important}
+.atlas-text .atlas-text-body{display:block;width:100%;padding:6px 10px}
+.atlas-image{background:transparent!important;box-shadow:none!important;overflow:hidden}
+.atlas-image::before,.atlas-image::after{display:none!important}
+@keyframes dash-scroll{to{stroke-dashoffset:-24}}
+.hotspot.is-linked{box-shadow:0 0 0 2px color-mix(in srgb,#869dff 80%,transparent),0 0 40px -6px color-mix(in srgb,#869dff 55%,transparent)!important;background:color-mix(in srgb,#869dff 12%,transparent)!important}
+
 @media (max-width:720px){
   :root{--sp-panel:100vw;--topbar-h:48px}
   .panel{top:0;right:0;bottom:0;border-radius:0}
@@ -637,21 +660,71 @@ Object.entries(ZONES).forEach(([key,z])=>{
   overlay.appendChild(label);
 });
 
-/* Hotspots */
+/* Hotspots + dynamic shapes */
 HOTSPOTS.forEach((h,idx)=>{
-  const el=document.createElement('button');
-  el.className='hotspot';el.dataset.id=h.id;el.dataset.zone=h.zone||'';
-  el.style.setProperty('--zc',h.color);
-  el.style.setProperty('--pulse-delay',(idx*0.13)+'s');
-  el.style.left  =pct(h.rect[0],IMG_W)+'%';
-  el.style.top   =pct(h.rect[1],IMG_H)+'%';
-  el.style.width =pct(h.rect[2],IMG_W)+'%';
-  el.style.height=pct(h.rect[3],IMG_H)+'%';
-  el.style.borderRadius=h.radius+'px';
-  if(h.rot)el.style.transform='rotate('+h.rot+'deg)';
-  el.setAttribute('aria-label',h.name+(h.zone?' — '+ZONES[h.zone].label:''));
-  el.innerHTML='<span class="hotspot__tag"><i></i>'+esc(h.name)+'</span>';
-  el.addEventListener('click',()=>openHotspot(h.id));
+  const type = h.type || 'hotspot';
+  if (type === 'connector' && h.from && h.to) {
+    const minX = Math.min(h.from.x, h.to.x) - 20;
+    const minY = Math.min(h.from.y, h.to.y) - 20;
+    const maxX = Math.max(h.from.x, h.to.x) + 20;
+    const maxY = Math.max(h.from.y, h.to.y) + 20;
+    const w = maxX - minX, ht = maxY - minY;
+    const p1 = { x: h.from.x - minX, y: h.from.y - minY };
+    const p2 = { x: h.to.x - minX,   y: h.to.y - minY };
+    const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const nx = -dy / dist, ny = dx / dist;
+    const curveAmt = (h.style.curve != null ? h.style.curve : 0.5);
+    const cX = midX + nx * dist * 0.25 * curveAmt;
+    const cY = midY + ny * dist * 0.25 * curveAmt;
+    const dash = h.style.strokeDash || '';
+    const speed = (h.style.dashSpeed || 1.2) + 's';
+    const wrap = document.createElement('div');
+    wrap.className = 'atlas-connector';
+    wrap.style.position = 'absolute';
+    wrap.style.left  = pct(minX, IMG_W)+'%';
+    wrap.style.top   = pct(minY, IMG_H)+'%';
+    wrap.style.width = pct(w,    IMG_W)+'%';
+    wrap.style.height= pct(ht,   IMG_H)+'%';
+    wrap.style.pointerEvents = 'none';
+    wrap.innerHTML = '<svg viewBox="0 0 '+w+' '+ht+'" style="position:absolute;inset:0;overflow:visible;width:100%;height:100%"><defs><marker id="arr-'+esc(h.id)+'" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L12,6 L0,12 Z" fill="'+esc(h.color)+'"/></marker></defs><path d="M '+p1.x+' '+p1.y+' Q '+cX+' '+cY+' '+p2.x+' '+p2.y+'" fill="none" stroke="'+esc(h.color)+'" stroke-width="'+(h.style.strokeWidth||2)+'" stroke-linecap="round"'+(dash?' stroke-dasharray="'+esc(dash)+'"':'')+(h.style.animateDash?' style="animation: dash-scroll '+speed+' linear infinite"':'')+(h.style.arrowEnd!==false?' marker-end="url(#arr-'+esc(h.id)+')"':'')+'/></svg>';
+    overlay.appendChild(wrap);
+    return;
+  }
+
+  const el = document.createElement('button');
+  el.className = 'hotspot atlas-'+type;
+  el.dataset.id = h.id;
+  el.dataset.zone = h.zone || '';
+  el.style.setProperty('--zc', h.color);
+  el.style.setProperty('--pulse-delay', (idx * 0.13) + 's');
+  el.style.left  = pct(h.rect[0], IMG_W) + '%';
+  el.style.top   = pct(h.rect[1], IMG_H) + '%';
+  el.style.width = pct(h.rect[2], IMG_W) + '%';
+  el.style.height= pct(h.rect[3], IMG_H) + '%';
+  el.style.borderRadius = h.radius + 'px';
+  if (h.rot) el.style.transform = 'rotate(' + h.rot + 'deg)';
+  el.setAttribute('aria-label', h.name + (h.zone ? ' — ' + ZONES[h.zone].label : ''));
+
+  if (type === 'dot') {
+    const rings = Math.max(1, Math.min(5, h.style.pulseRings || 3));
+    const speed = (h.style.pulseSpeed || 2.2);
+    const scale = (h.style.pulseScale || 5);
+    let halos = '';
+    for (let i = 0; i < rings; i++) {
+      halos += '<span class="dot-halo" style="border-color:'+esc(h.color)+';--pulse-scale:'+scale+';animation-duration:'+speed+'s;animation-delay:'+(i*(speed/rings)).toFixed(2)+'s"></span>';
+    }
+    el.innerHTML = '<span class="dot-core" style="background:'+esc(h.color)+'"></span>' + halos + '<span class="hotspot__tag"><i></i>'+esc(h.name)+'</span>';
+  } else if (type === 'text') {
+    const s = h.style || {};
+    el.innerHTML = '<span class="atlas-text-body" style="color:'+esc(s.textColor||'#0a0a10')+';font-size:'+(s.textSize||14)+'px;font-weight:'+(s.textWeight||500)+';text-align:'+esc(s.textAlign||'left')+'">'+esc(h.name)+'</span><span class="hotspot__tag"><i></i>'+esc(h.name)+'</span>';
+  } else if (type === 'image' && h.style?.src) {
+    el.innerHTML = '<img src="'+esc(h.style.src)+'" alt="'+esc(h.name)+'" style="width:100%;height:100%;object-fit:'+esc(h.style.fit||'contain')+';display:block;pointer-events:none"/><span class="hotspot__tag"><i></i>'+esc(h.name)+'</span>';
+  } else {
+    el.innerHTML = '<span class="hotspot__tag"><i></i>'+esc(h.name)+'</span>';
+  }
+  el.addEventListener('click', () => openHotspot(h.id));
   overlay.appendChild(el);
 });
 
@@ -668,7 +741,11 @@ function openHotspot(id){
   panelSub.textContent=h.sub||(z.label?z.label:'');
   panelBody.innerHTML=md(h.md)||'<p><em>Aucune documentation Markdown pour cette brique.</em></p>';
   panelBody.scrollTop=0;
-  document.querySelectorAll('.hotspot').forEach(el=>el.classList.toggle('is-active',el.dataset.id===id));
+  const linked=new Set(h.linkedTo||[]);
+  document.querySelectorAll('.hotspot').forEach(el=>{
+    el.classList.toggle('is-active',el.dataset.id===id);
+    el.classList.toggle('is-linked',linked.has(el.dataset.id));
+  });
   document.querySelectorAll('.nav-chip').forEach(el=>el.classList.toggle('is-on',el.dataset.zone===h.zone));
   document.querySelectorAll('.zone-label').forEach(el=>el.classList.toggle('is-active',el.dataset.zone===h.zone));
   hint.classList.add('is-hidden');
@@ -680,7 +757,7 @@ function openHotspot(id){
 function closePanel(){
   panel.classList.remove('is-open');panel.setAttribute('aria-hidden','true');
   stage.classList.remove('has-focus');currentId=null;
-  document.querySelectorAll('.hotspot').forEach(el=>el.classList.remove('is-active'));
+  document.querySelectorAll('.hotspot').forEach(el=>{el.classList.remove('is-active');el.classList.remove('is-linked');});
   document.querySelectorAll('.nav-chip').forEach(el=>el.classList.remove('is-on'));
   document.querySelectorAll('.zone-label').forEach(el=>el.classList.remove('is-active'));
 }

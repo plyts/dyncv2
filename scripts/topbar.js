@@ -85,14 +85,17 @@ export class Topbar {
       this.redoBtn,
       el("span", { class: "divider-v" }),
       el("button", {
-        class: "btn btn--ghost",
-        html: `${ICONS.upload}<span>Importer</span>`,
+        class: "btn btn--ghost btn--icon",
+        title: "Importer",
+        "aria-label": "Importer",
+        html: ICONS.upload,
         onclick: () => this.onImport?.(),
       }),
       el("button", {
-        class: "btn btn--filled",
+        class: "btn btn--filled btn--icon",
         title: "Aperçu du code exporté",
-        html: `${ICONS.code}<span>Export</span>`,
+        "aria-label": "Aperçu du code exporté",
+        html: ICONS.code,
         onclick: () => this.onExport?.(),
       }),
       el("button", {

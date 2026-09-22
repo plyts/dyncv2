@@ -158,6 +158,53 @@ export class Inspector {
       ])),
     ]);
     this.body.append(contentGroup);
+
+    // Linked layers (grouped binding)
+    this._renderLinks(layer);
+  }
+
+  _renderLinks(layer) {
+    const layers = [];
+    const walkFn = (list) => {
+      for (const l of list) {
+        if (l.id !== layer.id) layers.push(l);
+        if (l.children) walkFn(l.children);
+      }
+    };
+    walkFn(this.store.state.document.layers);
+
+    const linked = new Set(layer.linkedTo || []);
+    const list = el("div", { style: { display: "flex", flexWrap: "wrap", gap: "4px" } });
+    for (const other of layers.slice(0, 50)) {
+      const on = linked.has(other.id);
+      const chip = el("button", {
+        class: "btn btn--sm",
+        style: {
+          background: on ? "var(--accent-tint-strong)" : "var(--surface-2)",
+          color: on ? "var(--accent-hover)" : "var(--ink-secondary)",
+          boxShadow: on ? "inset 0 0 0 1px var(--accent-tint-strong)" : "var(--shadow-inset)",
+        },
+        text: other.name || other.type,
+        title: other.name,
+        onclick: () => {
+          this.store.transaction(s => {
+            const t = findLayer(s.document.layers, layer.id);
+            if (!t) return;
+            t.linkedTo = t.linkedTo || [];
+            const idx = t.linkedTo.indexOf(other.id);
+            if (idx >= 0) t.linkedTo.splice(idx, 1);
+            else t.linkedTo.push(other.id);
+          }, "update");
+        },
+      });
+      list.append(chip);
+    }
+    const g = this._group("Layers liés", [
+      el("div", { style: { fontSize: "11px", color: "var(--ink-tertiary)", lineHeight: "1.55" },
+                  text: "Sélectionne les calques à mettre en surbrillance en même temps que celui-ci." }),
+      list,
+    ]);
+    this.body.append(g);
   }
 
   _renderTransform(layer) {
@@ -220,8 +267,38 @@ export class Inspector {
       this._row("Couleur", this._colorSwatch(s.stroke || "#5e7bf9", v => this._patchStyle(layer.id, { stroke: v }))),
       this._row("Épaisseur", this._slider(s.strokeWidth || 0, 0, 8, 0.5, v => this._patchStyle(layer.id, { strokeWidth: v }))),
       this._row("Style", this._select([["", "Plein"], ["6 4", "Tirets"], ["2 4", "Pointillés"]], s.strokeDash || "", v => this._patchStyle(layer.id, { strokeDash: v }))),
-      this._row("Rayon", this._slider(s.radius || 0, 0, 60, 1, v => this._patchStyle(layer.id, { radius: v }))),
+      this._row("Rayon", this._slider(s.radius || 0, 0, 999, 1, v => this._patchStyle(layer.id, { radius: v }))),
+      this._toggleRow("Marching ants", !!s.animateDash, v => this._patchStyle(layer.id, { animateDash: v })),
+      s.animateDash ? this._row("Vitesse", this._slider(s.dashSpeed || 1.2, 0.2, 4, 0.1, v => this._patchStyle(layer.id, { dashSpeed: v }), "s")) : null,
     ]));
+
+    // Type-specific extras
+    if (layer.type === "dot") {
+      this.body.append(this._group("Point pulsé", [
+        this._row("Halos",   this._slider(s.pulseRings || 3, 1, 5, 1, v => this._patchStyle(layer.id, { pulseRings: v }))),
+        this._row("Vitesse", this._slider(s.pulseSpeed || 2.2, 0.5, 6, 0.1, v => this._patchStyle(layer.id, { pulseSpeed: v }), "s")),
+        this._row("Portée",  this._slider(s.pulseScale || 5, 1.5, 10, 0.1, v => this._patchStyle(layer.id, { pulseScale: v }), "×")),
+      ]));
+    }
+    if (layer.type === "connector") {
+      this.body.append(this._group("Connecteur", [
+        this._toggleRow("Flèche", s.arrowEnd !== false, v => this._patchStyle(layer.id, { arrowEnd: v })),
+        this._row("Courbure", this._slider(s.curve ?? 0.5, -1, 1, 0.05, v => this._patchStyle(layer.id, { curve: v }))),
+      ]));
+    }
+    if (layer.type === "image") {
+      this.body.append(this._group("Image", [
+        this._row("Ajustement", this._select([["contain", "Contain"], ["cover", "Cover"], ["fill", "Fill"], ["scale-down", "Scale-down"]], s.fit || "contain", v => this._patchStyle(layer.id, { fit: v }))),
+      ]));
+    }
+    if (layer.type === "text") {
+      this.body.append(this._group("Texte", [
+        this._row("Couleur", this._colorSwatch(s.textColor || "#0a0a10", v => this._patchStyle(layer.id, { textColor: v }))),
+        this._row("Taille",  this._slider(s.textSize || 14, 8, 96, 1, v => this._patchStyle(layer.id, { textSize: v }), "px")),
+        this._row("Graisse", this._select([[300, "Light"], [400, "Regular"], [500, "Medium"], [600, "Semibold"], [700, "Bold"]], String(s.textWeight || 500), v => this._patchStyle(layer.id, { textWeight: parseInt(v, 10) }))),
+        this._row("Align",   this._select([["left", "Gauche"], ["center", "Centre"], ["right", "Droite"]], s.textAlign || "left", v => this._patchStyle(layer.id, { textAlign: v }))),
+      ]));
+    }
 
     this.body.append(this._group("Ombre", [
       el("div", { class: "field" }, [
@@ -405,6 +482,20 @@ export class Inspector {
     };
     wrap.append(inp, val);
     return wrap;
+  }
+
+  _toggleRow(label, value, onChange) {
+    const btn = el("button", {
+      class: `btn btn--filled btn--sm`,
+      style: {
+        justifyContent: "space-between",
+        background: value ? "var(--accent-tint-strong)" : "var(--surface-2)",
+        color: value ? "var(--accent-hover)" : "var(--ink-secondary)",
+      },
+      html: `<span>${label}</span><span style="font-family:var(--font-mono);font-size:10px">${value ? "ON" : "OFF"}</span>`,
+      onclick: () => onChange(!value),
+    });
+    return el("div", { style: { display: "block", padding: "2px 0" } }, [btn]);
   }
 
   _select(options, value, onChange) {

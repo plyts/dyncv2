@@ -45,9 +45,41 @@ export const fmtDeg = n => `${round(n, 1)}°`;
 export const fmtPct = n => `${Math.round(n * 100)}%`;
 
 /* ------------------------------------------------------------------
-   Minimal Markdown parser — headings, bold, italic, code, lists,
-   blockquotes, hr, links, code fences. Enough for docs.
+   Extended Markdown parser — headings, bold, italic, code, lists,
+   blockquotes, hr, links, code fences (with basic syntax highlight),
+   images ![alt](url), embed of YouTube/Vimeo links to iframes.
 ------------------------------------------------------------------ */
+
+// Minimal syntax highlighter — keyword-based, works well enough for
+// the code snippets typically included in architecture docs.
+const KEYWORDS = {
+  js:   /\b(function|const|let|var|return|if|else|for|while|of|in|new|class|extends|import|from|export|default|async|await|try|catch|throw)\b/g,
+  py:   /\b(def|class|return|if|elif|else|for|while|import|from|as|with|try|except|raise|lambda|async|await|yield|pass|None|True|False)\b/g,
+  json: /"([^"\\]|\\.)*"(?=\s*:)/g,
+  bash: /\b(if|then|else|fi|for|do|done|while|case|esac|function|echo|cd|export|source|sudo)\b/g,
+};
+function hl(code, lang) {
+  let s = esc(code);
+  // Strings (all langs)
+  s = s.replace(/(&quot;([^&]|&(?!quot;))*?&quot;|&#39;([^&]|&(?!#39;))*?&#39;)/g, '<span class="tok-str">$1</span>');
+  // Comments
+  s = s.replace(/(\/\/[^\n]*|#[^\n]*)/g, '<span class="tok-com">$1</span>');
+  // Numbers
+  s = s.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="tok-num">$1</span>');
+  // Keywords
+  const kws = KEYWORDS[lang] || KEYWORDS.js;
+  s = s.replace(kws, '<span class="tok-kw">$1</span>');
+  return s;
+}
+
+function embedFor(url) {
+  const yt = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{6,})/.exec(url);
+  if (yt) return `<div class="md-embed"><iframe src="https://www.youtube.com/embed/${esc(yt[1])}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`;
+  const vi = /vimeo\.com\/(\d+)/.exec(url);
+  if (vi) return `<div class="md-embed"><iframe src="https://player.vimeo.com/video/${esc(vi[1])}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+  return null;
+}
+
 export function md(src = "") {
   if (!src.trim()) return "";
   const lines = src.replace(/\r\n/g, "\n").split("\n");
@@ -55,11 +87,15 @@ export function md(src = "") {
   let i = 0;
   const isBlank = s => /^\s*$/.test(s);
   const inline = s => s
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => `<img src="${esc(url)}" alt="${esc(alt)}" class="md-img"/>`)
     .replace(/`([^`]+)`/g, (_, c) => `<code>${esc(c)}</code>`)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/_([^_]+)_/g, "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t, u) => {
+      const emb = embedFor(u);
+      return emb || `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>`;
+    });
 
   while (i < lines.length) {
     const line = lines[i];
@@ -73,7 +109,8 @@ export function md(src = "") {
         body.push(lines[i]); i++;
       }
       i++; // closing fence
-      out.push(`<pre><code${lang ? ` class="lang-${esc(lang)}"` : ""}>${esc(body.join("\n"))}</code></pre>`);
+      const highlighted = hl(body.join("\n"), lang);
+      out.push(`<pre class="md-pre"${lang ? ` data-lang="${esc(lang)}"` : ""}><code${lang ? ` class="lang-${esc(lang)}"` : ""}>${highlighted}</code></pre>`);
       continue;
     }
     // Heading
