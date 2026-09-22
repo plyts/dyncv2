@@ -4,10 +4,11 @@ import { el } from "./util.js";
 import { ICONS } from "./icons.js";
 
 export class Topbar {
-  constructor({ store, root, onExport, onImport, onFit, onZoom, onUndo, onRedo, onTheme }) {
+  constructor({ store, root, onExport, onDownload, onImport, onFit, onZoom, onUndo, onRedo, onTheme }) {
     this.store = store;
     this.root = root;
     this.onExport = onExport;
+    this.onDownload = onDownload;
     this.onImport = onImport;
     this.onFit = onFit;
     this.onZoom = onZoom;
@@ -90,8 +91,15 @@ export class Topbar {
       }),
       el("button", {
         class: "btn btn--filled",
+        title: "Aperçu du code exporté",
         html: `${ICONS.code}<span>Export</span>`,
         onclick: () => this.onExport?.(),
+      }),
+      el("button", {
+        class: "btn btn--accent",
+        title: "Télécharger l'atlas .html (Cmd/Ctrl+S)",
+        html: `${ICONS.download}<span>Télécharger</span>`,
+        onclick: () => this.onDownload?.(),
       }),
       el("button", {
         class: "btn btn--ghost btn--icon", title: "Thème",

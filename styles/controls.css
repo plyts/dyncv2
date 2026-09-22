@@ -405,16 +405,19 @@
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
 }
-.modal__body { flex: 1; overflow: auto; }
+.modal__body { flex: 1; min-height: 0; overflow: auto; }
 .modal__foot {
   padding: var(--sp-6) var(--sp-9);
   border-top: 1px solid var(--line-subtle);
+  background: var(--surface-1);
   display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3);
+  flex: none;
 }
 .modal__tabs {
   display: flex; gap: var(--sp-2);
   padding: var(--sp-5) var(--sp-9) 0;
   border-bottom: 1px solid var(--line-subtle);
+  flex: none;
 }
 .modal__tab {
   padding: 6px 12px;
@@ -429,7 +432,15 @@
   color: var(--ink-primary);
   border-color: var(--accent);
 }
-.modal__pane { padding: var(--sp-9); }
+.modal__pane {
+  padding: var(--sp-9);
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
 
 pre.code-block {
   margin: 0;
@@ -441,7 +452,8 @@ pre.code-block {
   line-height: var(--leading-relaxed);
   color: var(--ink-primary);
   overflow: auto;
-  max-height: 60vh;
+  flex: 1;
+  min-height: 200px;
   box-shadow: var(--shadow-inset);
   white-space: pre;
 }

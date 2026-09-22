@@ -74,12 +74,13 @@ const importer = new Importer({ store, onDone: () => canvas.fitToScreen() });
 
 const topbar = new Topbar({
   store, root: topbarEl,
-  onExport: () => exporter.open(),
-  onImport: () => importer.openDialog(),
-  onFit:    () => canvas.fitToScreen(),
-  onUndo:   () => store.undo(),
-  onRedo:   () => store.redo(),
-  onTheme:  () => toggleTheme(),
+  onExport:   () => exporter.open(),
+  onDownload: () => exporter.download(),
+  onImport:   () => importer.openDialog(),
+  onFit:      () => canvas.fitToScreen(),
+  onUndo:     () => store.undo(),
+  onRedo:     () => store.redo(),
+  onTheme:    () => toggleTheme(),
 });
 
 // Statusbar
@@ -132,6 +133,7 @@ document.addEventListener("keydown", (e) => {
 
   if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); store.undo(); return; }
   if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); store.redo(); return; }
+  if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); exporter.download(); return; }
   if (inField) return;
 
   if (e.key === "Escape") {

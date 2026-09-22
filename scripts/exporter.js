@@ -13,6 +13,17 @@ export class Exporter {
     this.store = store;
   }
 
+  /** Direct download of the atlas HTML — no modal. */
+  download() {
+    const doc = this.store.state.document;
+    const name = (doc.name || "atlas")
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-|-$/g, "") + ".html";
+    downloadBlob(name, "text/html", this.exportAtlas());
+    toast(`Téléchargé : ${name}`);
+  }
+
   open() {
     const scrim = el("div", { class: "modal-scrim", onclick: (e) => { if (e.target === scrim) scrim.remove(); } });
     const modal = el("div", { class: "modal" });
