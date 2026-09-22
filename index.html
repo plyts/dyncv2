@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dyncv Studio — éditeur d'architecture visuelle</title>
+  <meta name="description" content="Éditeur visuel modulaire pour transformer une architecture logicielle en expérience interactive léchée.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/controls.css">
+  <link rel="stylesheet" href="styles/canvas.css">
+  <link rel="stylesheet" href="styles/layers.css">
+  <link rel="stylesheet" href="styles/markdown-editor.css">
+</head>
+<body>
+  <div class="app mode-edit" role="application">
+
+    <header class="topbar" role="banner"></header>
+
+    <main class="workspace">
+
+      <aside class="panel-left" aria-label="Arborescence des calques"></aside>
+
+      <section class="stage mode-edit" aria-label="Canvas d'édition">
+        <div class="canvas-hud" aria-hidden="false"></div>
+      </section>
+
+      <aside class="panel-right" aria-label="Inspecteur"></aside>
+
+    </main>
+
+    <footer class="statusbar" role="status" aria-live="polite"></footer>
+
+    <div class="preview-flyout" aria-live="polite" aria-hidden="true"></div>
+
+  </div>
+
+  <script type="module" src="scripts/app.js"></script>
+</body>
+</html>

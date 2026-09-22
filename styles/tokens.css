@@ -1,0 +1,164 @@
+/* ============================================================
+   Design Tokens — inspired by Material 3 & Apple HIG
+   Minimal, refined, professional. Dark by default.
+   ============================================================ */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Surfaces ─────────────────────────────────────────────── */
+  --surface-0: #0a0a0d;
+  --surface-1: #101014;
+  --surface-2: #16161c;
+  --surface-3: #1c1c24;
+  --surface-4: #22222c;
+  --surface-glass: rgba(20, 20, 26, 0.72);
+  --surface-glass-strong: rgba(16, 16, 22, 0.88);
+
+  /* ── Ink / Text ───────────────────────────────────────────── */
+  --ink-primary: #f4f4f8;
+  --ink-secondary: #b4b4c0;
+  --ink-tertiary: #7a7a88;
+  --ink-quaternary: #4a4a56;
+  --ink-inverse: #0a0a0d;
+
+  /* ── Borders / Lines ──────────────────────────────────────── */
+  --line-subtle: rgba(255, 255, 255, 0.06);
+  --line-default: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --line-focus: rgba(94, 123, 249, 0.5);
+
+  /* ── Accent (primary interactive) ─────────────────────────── */
+  --accent: #5e7bf9;
+  --accent-hover: #7891ff;
+  --accent-pressed: #4a67e0;
+  --accent-tint: rgba(94, 123, 249, 0.14);
+  --accent-tint-strong: rgba(94, 123, 249, 0.22);
+  --accent-ink: #ffffff;
+
+  /* ── Semantic ─────────────────────────────────────────────── */
+  --success: #34c759;
+  --warning: #ff9f0a;
+  --danger: #ff453a;
+  --info: #64d2ff;
+
+  /* ── Zone palette (RAG diagram) ───────────────────────────── */
+  --zone-construction: #f2b705;
+  --zone-translation: #e03131;
+  --zone-routing: #f08c00;
+  --zone-indexing: #1c7ed6;
+  --zone-retrieval: #2f9e44;
+  --zone-generation: #9c36b5;
+  --zone-core: #5e7bf9;
+
+  /* ── Typography ───────────────────────────────────────────── */
+  --font-sans: "Inter", -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Inter", -apple-system, "SF Pro Display", system-ui, sans-serif;
+
+  /* Type scale — compact professional */
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 20px;
+  --text-3xl: 28px;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.08em;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ── Space — 4px grid ─────────────────────────────────────── */
+  --sp-0: 0;
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 8px;
+  --sp-5: 10px;
+  --sp-6: 12px;
+  --sp-7: 14px;
+  --sp-8: 16px;
+  --sp-9: 20px;
+  --sp-10: 24px;
+  --sp-11: 32px;
+  --sp-12: 40px;
+  --sp-13: 48px;
+
+  /* ── Radii ────────────────────────────────────────────────── */
+  --r-1: 3px;
+  --r-2: 4px;
+  --r-3: 6px;
+  --r-4: 8px;
+  --r-5: 10px;
+  --r-6: 12px;
+  --r-7: 16px;
+  --r-8: 20px;
+  --r-full: 999px;
+
+  /* ── Elevation (subtle, no bombast) ───────────────────────── */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--line-subtle);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line-default);
+  --shadow-4: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line-default);
+  --shadow-focus: 0 0 0 3px var(--accent-tint-strong);
+  --shadow-inset: inset 0 0 0 1px var(--line-default);
+
+  /* ── Motion — Bézier curves ───────────────────────────────── */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerated: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerated: cubic-bezier(0.3, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --dur-instant: 80ms;
+  --dur-quick: 140ms;
+  --dur-medium: 240ms;
+  --dur-slow: 400ms;
+  --dur-slower: 600ms;
+
+  /* ── Panels ───────────────────────────────────────────────── */
+  --left-panel-w: 264px;
+  --right-panel-w: 320px;
+  --topbar-h: 48px;
+  --statusbar-h: 28px;
+
+  /* ── Blur ─────────────────────────────────────────────────── */
+  --blur-sm: blur(8px) saturate(140%);
+  --blur-md: blur(16px) saturate(160%);
+  --blur-lg: blur(24px) saturate(180%);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --surface-0: #fafafb;
+  --surface-1: #ffffff;
+  --surface-2: #f4f4f6;
+  --surface-3: #ececef;
+  --surface-4: #e4e4e8;
+  --surface-glass: rgba(255, 255, 255, 0.78);
+  --surface-glass-strong: rgba(255, 255, 255, 0.92);
+  --ink-primary: #0a0a10;
+  --ink-secondary: #52525c;
+  --ink-tertiary: #85858f;
+  --ink-quaternary: #b0b0b8;
+  --ink-inverse: #ffffff;
+  --line-subtle: rgba(0, 0, 0, 0.05);
+  --line-default: rgba(0, 0, 0, 0.09);
+  --line-strong: rgba(0, 0, 0, 0.16);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--line-subtle);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--line-default);
+  --shadow-4: 0 16px 48px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--line-default);
+}
