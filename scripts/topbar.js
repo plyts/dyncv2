@@ -4,12 +4,13 @@ import { el } from "./util.js";
 import { ICONS } from "./icons.js";
 
 export class Topbar {
-  constructor({ store, root, onExport, onDownload, onImport, onFit, onZoom, onUndo, onRedo, onTheme }) {
+  constructor({ store, root, onExport, onDownload, onImport, onLibrary, onFit, onZoom, onUndo, onRedo, onTheme }) {
     this.store = store;
     this.root = root;
     this.onExport = onExport;
     this.onDownload = onDownload;
     this.onImport = onImport;
+    this.onLibrary = onLibrary;
     this.onFit = onFit;
     this.onZoom = onZoom;
     this.onUndo = onUndo;
@@ -84,6 +85,13 @@ export class Topbar {
       this.undoBtn,
       this.redoBtn,
       el("span", { class: "divider-v" }),
+      el("button", {
+        class: "btn btn--ghost btn--icon",
+        title: "Bibliothèque d'objets",
+        "aria-label": "Bibliothèque d'objets",
+        html: ICONS.book,
+        onclick: () => this.onLibrary?.(),
+      }),
       el("button", {
         class: "btn btn--ghost btn--icon",
         title: "Importer",

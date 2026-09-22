@@ -74,3 +74,37 @@
 .md-editor:not(.is-split) .md-editor__preview { display: none; }
 
 .md-editor__preview .markdown-body { font-size: var(--text-sm); }
+
+/* ── Big / full-screen editor ──────────────────────────────── */
+.modal.modal--editor {
+  width: min(1100px, 94vw);
+  height: min(84vh, 900px);
+  max-height: 84vh;
+}
+.md-editor-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: var(--sp-6) var(--sp-8) var(--sp-8);
+}
+.md-editor--big {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+.md-editor--big .md-editor__pane { min-height: 0; height: 100%; }
+.md-editor--big .md-editor__textarea {
+  min-height: 0;
+  height: 100%;
+  font-size: var(--text-md);
+  line-height: 1.7;
+  padding: var(--sp-8);
+}
+.md-editor--big .md-editor__preview {
+  max-height: none;
+  height: 100%;
+  padding: var(--sp-8);
+}
+.md-editor--big .markdown-body { font-size: var(--text-md); }
+.md-editor--big .md-toolbar { padding: var(--sp-3) var(--sp-4); }
+.md-editor--big .md-toolbar button { height: 26px; min-width: 26px; font-size: var(--text-sm); }

@@ -4,10 +4,10 @@ import { el } from "./util.js";
 import { ICONS } from "./icons.js";
 import { md } from "./util.js";
 
-export function mountMarkdownEditor({ container, value = "", onChange, onCommit }) {
+export function mountMarkdownEditor({ container, value = "", onChange, onCommit, big = false }) {
   container.innerHTML = "";
 
-  const editor  = el("div", { class: "md-editor is-split" });
+  const editor  = el("div", { class: `md-editor is-split${big ? " md-editor--big" : ""}` });
   const toolbar = el("div", { class: "md-toolbar" });
   const pane    = el("div", { class: "md-editor__pane" });
   const area    = el("textarea", { class: "md-editor__textarea", spellcheck: "false", placeholder: "# Titre\n\nDécris cette brique…" });

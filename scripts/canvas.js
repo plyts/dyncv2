@@ -37,6 +37,7 @@ export class CanvasView {
     });
     this.store.on("layer:transform", (p) => this.updateNode(p?.id));
     this.store.on("layer:style",     (p) => this.updateNode(p?.id));
+    this.store.on("layer:content",   (p) => this.updateNode(p?.id));
     this.store.on("selection",       () => this.updateSelection());
     this.store.on("hover",           () => this.updateHover());
     this.store.on("mode",            () => this.updateMode());

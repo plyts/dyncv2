@@ -15,6 +15,8 @@ import { Importer } from "./importer.js";
 import { ShapeToolbar } from "./toolbar.js";
 import { makeShape, findLayer } from "./store.js";
 import { MotionEngine } from "./motion-engine.js";
+import { initPanels } from "./panels.js";
+import { PresetLibrary } from "./presets.js";
 
 const initialState = {
   document: ragScene(),
@@ -52,6 +54,33 @@ const hudEl     = $(".canvas-hud");
 const rightEl   = $(".panel-right");
 const statusEl  = $(".statusbar");
 const flyoutEl  = $(".preview-flyout");
+const workspaceEl = $(".workspace");
+
+// Resizable + collapsible side panels
+const panels = initPanels({ app: appRoot, workspace: workspaceEl, leftPanel: leftEl, rightPanel: rightEl });
+
+// Floating collapse toggles
+const chevronL = `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3L5 7l4 4"/></svg>`;
+const chevronR = `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l4 4-4 4"/></svg>`;
+const leftToggle = el("button", {
+  class: "panel-toggle panel-toggle--left",
+  title: "Afficher / masquer les calques (Cmd/Ctrl+\\)",
+  onclick: () => { panels.toggleLeft(); syncToggleIcons(); },
+});
+const rightToggle = el("button", {
+  class: "panel-toggle panel-toggle--right",
+  title: "Afficher / masquer l'inspecteur",
+  onclick: () => { panels.toggleRight(); syncToggleIcons(); },
+});
+workspaceEl.append(leftToggle, rightToggle);
+function syncToggleIcons() {
+  leftToggle.innerHTML  = panels.isLeftCollapsed()  ? chevronR : chevronL;
+  rightToggle.innerHTML = panels.isRightCollapsed() ? chevronL : chevronR;
+  leftToggle.style.left  = panels.isLeftCollapsed()  ? "0" : "calc(var(--left-panel-w) - 11px)";
+  rightToggle.style.right = panels.isRightCollapsed() ? "0" : "calc(var(--right-panel-w) - 11px)";
+}
+syncToggleIcons();
+window.addEventListener("resize", syncToggleIcons);
 
 const flyout = new PreviewFlyout({
   store,
@@ -150,12 +179,16 @@ const layers = new LayersTree({ store, root: leftEl });
 
 const exporter = new Exporter({ store });
 const importer = new Importer({ store, onDone: () => canvas.fitToScreen() });
+const library  = new PresetLibrary({ store, canvas });
+window.__library = library;
+inspector.library = library;
 
 const topbar = new Topbar({
   store, root: topbarEl,
   onExport:   () => exporter.open(),
   onDownload: () => exporter.download(),
   onImport:   () => importer.openDialog(),
+  onLibrary:  () => library.openLibrary(),
   onFit:      () => canvas.fitToScreen(),
   onUndo:     () => store.undo(),
   onRedo:     () => store.redo(),
@@ -213,6 +246,7 @@ document.addEventListener("keydown", (e) => {
   if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); store.undo(); return; }
   if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); store.redo(); return; }
   if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); exporter.download(); return; }
+  if (mod && e.key === "\\") { e.preventDefault(); panels.toggleLeft(); syncToggleIcons(); return; }
   if (inField) return;
 
   if (e.key === "Escape") {
@@ -252,26 +286,42 @@ document.addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() === "p") {
     store.patch(s => { s.mode = "preview"; }, "mode");
   }
-  // Arrow keys nudge
-  const sel = store.state.selection[0];
-  if (sel && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+  // Arrow keys nudge — works for every object type (connectors move
+  // both endpoints; groups carry their children).
+  const selIds = store.state.selection;
+  if (selIds.length && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
     e.preventDefault();
     const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+    const dy = e.key === "ArrowUp"   ? -step : e.key === "ArrowDown"  ? step : 0;
     store.transaction(s => {
-      const findAndNudge = (arr) => {
-        for (const l of arr) {
-          if (l.id === sel) {
-            if (e.key === "ArrowUp")    l.transform.y -= step;
-            if (e.key === "ArrowDown")  l.transform.y += step;
-            if (e.key === "ArrowLeft")  l.transform.x -= step;
-            if (e.key === "ArrowRight") l.transform.x += step;
-            return true;
-          }
-          if (l.children && findAndNudge(l.children)) return true;
+      for (const id of selIds) {
+        const l = findLayer(s.document.layers, id);
+        if (!l) continue;
+        l.transform.x += dx; l.transform.y += dy;
+        if (l.type === "connector") {
+          if (l.from) { l.from.x += dx; l.from.y += dy; }
+          if (l.to)   { l.to.x += dx;   l.to.y += dy; }
         }
-      };
-      findAndNudge(s.document.layers);
+        // Move descendants of a group by the same delta
+        if (l.children?.length) {
+          const shift = (arr) => arr.forEach(c => {
+            c.transform.x += dx; c.transform.y += dy;
+            if (c.type === "connector") { if (c.from) { c.from.x += dx; c.from.y += dy; } if (c.to) { c.to.x += dx; c.to.y += dy; } }
+            if (c.children) shift(c.children);
+          });
+          shift(l.children);
+        }
+      }
+      return { id: selIds[0] };
     }, "layer:transform");
+    // Refresh every moved node
+    selIds.forEach(id => {
+      canvas.updateNode(id);
+      const l = findLayer(store.state.document.layers, id);
+      if (l?.children) { const w = (arr) => arr.forEach(c => { canvas.updateNode(c.id); if (c.children) w(c.children); }); w(l.children); }
+    });
+    canvas._alignHandles();
   }
 });
 

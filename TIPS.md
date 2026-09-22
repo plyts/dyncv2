@@ -147,7 +147,28 @@ Toute la chorégraphie part avec l'export : le fichier `.html` autonome embarque
 
 ---
 
-## 6. Debug rapide
+## 6. Bibliothèque d'objets réutilisables
+
+Tes objets (avec **tout** leur style, motion, sync, animations) peuvent être **sauvegardés** et **réutilisés sur n'importe quel projet ou image**.
+
+- **Sauver** : sélectionne un objet → Inspecteur → Propriétés → **★ Sauver comme preset** (ou bouton **Bibliothèque** dans la topbar → « Sauver la sélection »).
+- **Réutiliser** : ouvre la **Bibliothèque** (icône livre dans la topbar) → **Insérer**. L'objet apparaît au centre du canvas, prêt à être déplacé.
+- Les presets sont **persistés dans le navigateur** (`localStorage`) : ils survivent aux rechargements et sont disponibles quand tu ouvres une **autre image / un autre projet**.
+- 3 presets de démarrage fournis : *Nœud actif (pulse)*, *Flux de données* (connecteur animé), *Zone en tirets animés*.
+
+> Astuce : construis une fois ton « nœud réseau actif » parfait (couleur, halos, vitesse, sync), sauve-le en preset, et dépose-le sur toutes tes futures architectures en un clic.
+
+---
+
+## 7. Panneaux flexibles
+
+- **Redimensionner** : glisse le bord intérieur de la sidebar gauche (calques) ou droite (inspecteur).
+- **Replier / déplier** : les chevrons flottants au bord de chaque panneau — ou `Cmd/Ctrl + \` pour les calques. L'inspecteur gagne ainsi toute la largeur pour l'écriture.
+- L'éditeur Markdown a un mode **⤢ Plein écran** (onglet Docs) : une grande surface d'écriture avec aperçu live, copier-coller, images et embeds.
+
+---
+
+## 8. Debug rapide
 
 - **Le changement d'un paramètre ne se voit pas ?** → Depuis la v2 c'est du **live two-way binding** : chaque tick du slider redessine le calque à l'instant. Si tu n'en vois rien, vérifie que le calque n'est pas **masqué** (icône œil dans l'arborescence) ou **verrouillé**.
 - **Le connecteur ne suit pas quand je bouge un bloc ?** → Les extrémités du connecteur sont **indépendantes** des blocs. Sélectionne le connecteur, tu vois deux poignées bleues (from / to) : tu peux les glisser directement, ou déplacer le connecteur entier depuis son bounding box.

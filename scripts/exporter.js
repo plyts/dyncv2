@@ -320,17 +320,25 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .icon-btn:hover{background:var(--surface-2);color:var(--ink)}
 .icon-btn svg{width:15px;height:15px}
 
-.stage{position:relative;overflow:hidden;display:grid;place-items:center;padding:24px}
+.stage{position:relative;overflow:hidden;display:grid;place-items:center;padding:24px;--ar:${IMG_W} / ${IMG_H};--arn:${(IMG_W / IMG_H).toFixed(6)}}
 
+/* The figure keeps the image's EXACT aspect ratio, sized by whichever of
+   available width/height is the tighter constraint. This guarantees the
+   overlay (% coords) lines up pixel-for-pixel with the image, identical to
+   the editor canvas — no overflow, no drift. */
 .figure{
-  position:relative;max-width:min(100%,1400px);max-height:100%;
-  aspect-ratio:${IMG_W} / ${IMG_H};width:100%;
+  position:relative;
+  aspect-ratio:var(--ar);
+  width:min(100%, calc((100vh - var(--topbar-h) - 48px) * var(--arn)));
+  max-width:1600px;
   border-radius:14px;overflow:hidden;background:var(--paper);
   box-shadow:0 0 0 1px var(--line-2),0 30px 80px -30px rgba(0,0,0,0.6),0 12px 32px -12px rgba(0,0,0,0.35);
   transition:filter 400ms var(--ease);
 }
 .stage.has-focus .figure__img{filter:brightness(0.62) saturate(0.65) blur(0.3px)}
-.figure__img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none;transition:filter 380ms var(--ease)}
+/* object-fit:fill is safe here — figure aspect === image aspect, so it
+   fills edge-to-edge with zero distortion and zero letterbox. */
+.figure__img{display:block;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none;pointer-events:none;transition:filter 380ms var(--ease)}
 .overlay{position:absolute;inset:0;pointer-events:none}
 
 .hotspot{

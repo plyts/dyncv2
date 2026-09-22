@@ -478,6 +478,50 @@ pre.code-block {
   white-space: pre;
 }
 
+/* ── Preset library ───────────────────────────────────────── */
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--sp-5);
+}
+.preset-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-5);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-inset);
+  overflow: hidden;
+  transition: transform var(--dur-quick) var(--ease-standard), box-shadow var(--dur-quick) var(--ease-standard);
+}
+.preset-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-3); }
+.preset-card__thumb {
+  height: 84px;
+  display: grid; place-items: center;
+  background:
+    radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
+    var(--surface-1);
+  border-bottom: 1px solid var(--line-subtle);
+}
+.preset-card__meta { padding: 8px 10px 4px; }
+.preset-card__name {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.preset-card__kind {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.preset-card__actions {
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 10px 10px;
+}
+.preset-card__actions .btn--accent { flex: 1; }
+
 /* ── Tooltip ───────────────────────────────────────────────── */
 .tooltip {
   position: fixed;

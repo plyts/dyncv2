@@ -43,8 +43,27 @@ export class Inspector {
     this._build();
     this.store.on("selection", () => this.render());
     this.store.on("replace",   () => this.render());
-    this.store.on("update",    () => this.render());
+    // Guard: never rebuild the inspector while the user is typing / dragging
+    // inside it — that would kill focus (the markdown "one char" bug).
+    this.store.on("update", () => {
+      if (this._isEditingInside()) { this._pendingRender = true; return; }
+      this.render();
+    });
     this.store.on("layer:transform", () => this._refreshTransform());
+
+    // Flush any render that was deferred while the user was editing.
+    document.addEventListener("focusout", (e) => {
+      if (this._pendingRender && this.root.contains(e.target) && !this._isEditingInside()) {
+        this._pendingRender = false;
+        setTimeout(() => { if (!this._isEditingInside()) this.render(); }, 0);
+      }
+    });
+  }
+
+  _isEditingInside() {
+    const a = document.activeElement;
+    if (!a || !this.root.contains(a)) return false;
+    return a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.isContentEditable;
   }
 
   _build() {
@@ -145,6 +164,16 @@ export class Inspector {
           text: "Dupliquer", onclick: () => this._duplicate(layer.id),
         }),
       ]),
+      el("button", {
+        class: "btn btn--filled btn--sm", style: { width: "100%", marginTop: "4px" },
+        html: "★ Sauver comme preset",
+        title: "Ajouter cet objet à la bibliothèque réutilisable",
+        onclick: () => {
+          if (!this.library) return;
+          const name = prompt("Nom du preset :", layer.name || layer.type);
+          if (name !== null) this.library.saveSelection(name.trim() || layer.name);
+        },
+      }),
     ]));
 
     // Transform
@@ -496,14 +525,58 @@ export class Inspector {
   /* ── Docs tab ───────────────────────────────────────────── */
 
   _renderDocs(layer) {
-    const container = this._group("Documentation Markdown", []);
+    const head = el("div", { class: "group__head" }, [
+      el("span", { class: "group__title", text: "Documentation Markdown" }),
+      el("button", {
+        class: "btn btn--filled btn--sm",
+        html: "⤢ Plein écran",
+        title: "Ouvrir l'éditeur en grand",
+        onclick: () => this._openBigEditor(layer.id),
+      }),
+    ]);
+    const bodyEl = el("div", { class: "group__body" });
+    const container = el("div", { class: "group" }, [head, bodyEl]);
     this.body.append(container);
     mountMarkdownEditor({
-      container: container.querySelector(".group__body"),
+      container: bodyEl,
       value: layer.content?.markdown || "",
       onChange: (v) => this._patchContent(layer.id, "markdown", v, /*noHistory*/ true),
       onCommit: (v) => this._patchContent(layer.id, "markdown", v, false),
     });
+  }
+
+  _openBigEditor(layerId) {
+    const layer = findLayer(this.store.state.document.layers, layerId);
+    if (!layer) return;
+    const scrim = el("div", { class: "modal-scrim", onclick: (e) => { if (e.target === scrim) close(); } });
+    const modal = el("div", { class: "modal modal--editor" });
+    const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey); this.render(); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+
+    const bodyEl = el("div", { class: "md-editor-host" });
+    modal.append(
+      el("div", { class: "modal__head" }, [
+        el("div", {}, [
+          el("div", { class: "modal__title", text: "Éditeur — " + (layer.name || "Documentation") }),
+          el("div", { style: { fontSize: "12px", color: "var(--ink-tertiary)", marginTop: "2px" }, text: "Écris librement : titres, listes, code, images, embeds vidéo. Copier-coller supporté." }),
+        ]),
+        el("button", { class: "btn btn--icon", html: ICONS.x, onclick: close }),
+      ]),
+      bodyEl,
+    );
+    scrim.append(modal);
+    document.body.append(scrim);
+    document.addEventListener("keydown", onKey);
+
+    mountMarkdownEditor({
+      container: bodyEl,
+      value: layer.content?.markdown || "",
+      onChange: (v) => this._patchContent(layerId, "markdown", v, true),
+      onCommit: (v) => this._patchContent(layerId, "markdown", v, false),
+      big: true,
+    });
+    // Autofocus the textarea
+    setTimeout(() => bodyEl.querySelector("textarea")?.focus(), 50);
   }
 
   /* ── Helpers ────────────────────────────────────────────── */
@@ -616,11 +689,13 @@ export class Inspector {
   }
   _patchContent(id, key, value, noHistory = false) {
     const fn = noHistory ? "patch" : "transaction";
+    // Use a dedicated lightweight event so the canvas patches only this
+    // node (no full renderAll) and the inspector never rebuilds mid-typing.
     this.store[fn](s => {
       const l = findLayer(s.document.layers, id);
       if (l) { l.content = l.content || {}; l.content[key] = value; }
       return { id };
-    }, "update");
+    }, "layer:content");
   }
   _duplicate(id) {
     import("./util.js").then(({ uid }) => {
