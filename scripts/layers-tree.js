@@ -197,6 +197,11 @@ export class LayersTree {
       iconWrap,
       dot,
       name,
+      layer.sync?.source ? el("span", {
+        class: "layer__sync",
+        title: `Synchronisé (${layer.sync.effect || "effet"})`,
+        html: `<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6a4 4 0 10-1 4"/><path d="M11 3v3h-3"/></svg>`,
+      }) : null,
       layer.zone ? el("span", { class: "layer__zone-tag", text: layer.zone.slice(0,3) }) : null,
       el("div", { class: "layer__actions" }, [actVis, actLock, actDel]),
     ]);

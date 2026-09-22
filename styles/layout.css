@@ -10,9 +10,10 @@
 }
 
 /* ── Top bar ─────────────────────────────────────────────────── */
+/* Decoupled from the panel widths: a plain flex row so resizing a
+   sidebar never squeezes the title / mode switcher. */
 .topbar {
-  display: grid;
-  grid-template-columns: var(--left-panel-w) 1fr var(--right-panel-w);
+  display: flex;
   align-items: center;
   border-bottom: 1px solid var(--line-subtle);
   background: var(--surface-glass-strong);
@@ -26,8 +27,10 @@
   display: flex; align-items: center; gap: var(--sp-4);
   padding: 0 var(--sp-8);
   height: 100%;
+  flex: none;
   border-right: 1px solid var(--line-subtle);
 }
+.brand-name { white-space: nowrap; }
 
 .brand-mark {
   width: 22px; height: 22px;
@@ -62,11 +65,14 @@
   display: flex; align-items: center; justify-content: center;
   gap: var(--sp-3);
   padding: 0 var(--sp-6);
+  flex: 1;
+  min-width: 0;
 }
 
 .topbar__right {
   display: flex; align-items: center; justify-content: flex-end;
   gap: var(--sp-3);
+  flex: none;
   padding: 0 var(--sp-6);
   border-left: 1px solid var(--line-subtle);
   height: 100%;
@@ -117,9 +123,12 @@
 .panel-left  { border-right: 1px solid var(--line-subtle); }
 .panel-right { border-left:  1px solid var(--line-subtle); }
 
-/* Collapsed panels */
-.app.left-collapsed  .panel-left  { display: none; }
-.app.right-collapsed .panel-right { display: none; }
+/* Collapsed panels — keep the element in the grid (so the stage keeps
+   its middle column) but shrink its column to 0 and clip its content.
+   Using display:none would drop the panel out of the grid and the stage
+   would fall into the first (0-width) column. */
+.app.left-collapsed  .panel-left  { pointer-events: none; }
+.app.right-collapsed .panel-right { pointer-events: none; }
 .app.left-collapsed  .workspace   { grid-template-columns: 0 1fr var(--right-panel-w); }
 .app.right-collapsed .workspace   { grid-template-columns: var(--left-panel-w) 1fr 0; }
 .app.left-collapsed.right-collapsed .workspace { grid-template-columns: 0 1fr 0; }

@@ -84,6 +84,19 @@ export class MotionEngine {
     setTimeout(() => this._applyEffect(targetId, effect), delayMs);
   }
 
+  /** Play the whole choreography once: fire every synced layer's effect,
+      staggered by its configured delay (a full-sequence demo). */
+  playChoreographyOnce() {
+    let fired = 0;
+    walk(this.store.state.document.layers, (l) => {
+      if (l.sync?.source && l.sync?.effect) {
+        this.fireEffect(l.id, l.sync.effect, l.sync.delay || 0);
+        fired++;
+      }
+    });
+    return fired;
+  }
+
   /** Subscribe to a phase-crossing event for a layer. */
   onPhase(layerId, trigger, fn) {
     const event = `${layerId}:phase:${trigger}`;

@@ -57,7 +57,10 @@ const flyoutEl  = $(".preview-flyout");
 const workspaceEl = $(".workspace");
 
 // Resizable + collapsible side panels
-const panels = initPanels({ app: appRoot, workspace: workspaceEl, leftPanel: leftEl, rightPanel: rightEl });
+const panels = initPanels({
+  app: appRoot, workspace: workspaceEl, leftPanel: leftEl, rightPanel: rightEl,
+  onResize: () => { syncToggleIcons(); canvas?.applyTransform?.(); },
+});
 
 // Floating collapse toggles
 const chevronL = `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3L5 7l4 4"/></svg>`;
@@ -108,13 +111,21 @@ motion.play();
 const tlHud = document.createElement("div");
 tlHud.className = "timeline-hud";
 tlHud.innerHTML = `
-  <button id="tlPlay" title="Lecture / pause">
+  <button id="tlPlay" title="Lecture / pause de la timeline">
     <svg viewBox="0 0 14 14" width="12" height="12" fill="currentColor"><path d="M4 3h2v8H4zM8 3h2v8H8z"/></svg>
   </button>
   <div class="timeline-hud__pill"><span id="tlHead"></span></div>
   <span class="timeline-hud__evt" id="tlEvt">IDLE</span>
+  <button id="tlDemo" class="timeline-hud__demo" title="Rejouer toute la chorégraphie">
+    <svg viewBox="0 0 14 14" width="12" height="12" fill="currentColor"><path d="M4 3l7 4-7 4V3z"/></svg>
+    <span>Jouer</span>
+  </button>
 `;
 stageEl.append(tlHud);
+tlHud.querySelector("#tlDemo").onclick = () => {
+  const n = motion.playChoreographyOnce();
+  toast(n ? `Chorégraphie jouée — ${n} effet${n > 1 ? "s" : ""}` : "Aucune synchronisation configurée");
+};
 
 const tlHead = tlHud.querySelector("#tlHead");
 const tlEvt  = tlHud.querySelector("#tlEvt");

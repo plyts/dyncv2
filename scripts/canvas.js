@@ -16,11 +16,13 @@ export class CanvasView {
     this.canvas   = el("div", { class: "canvas" });
     this.stage    = el("div", { class: "canvas__stage" });
     this.bg       = el("img", { class: "canvas__background", alt: "" });
+    this.syncSvg  = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    this.syncSvg.setAttribute("class", "sync-links");
     this.overlay  = el("div", { class: "canvas__overlay" });
     this.handles  = el("div", { class: "handles hidden" });
     this.dimOverlay = el("div", { class: "dim-overlay hidden" });
 
-    this.stage.append(this.bg, this.overlay, this.handles, this.dimOverlay);
+    this.stage.append(this.bg, this.syncSvg, this.overlay, this.handles, this.dimOverlay);
     this.canvas.append(this.stage);
     this.viewport.append(this.canvas);
     this.root.append(this.viewport);
@@ -38,7 +40,7 @@ export class CanvasView {
     this.store.on("layer:transform", (p) => this.updateNode(p?.id));
     this.store.on("layer:style",     (p) => this.updateNode(p?.id));
     this.store.on("layer:content",   (p) => this.updateNode(p?.id));
-    this.store.on("selection",       () => this.updateSelection());
+    this.store.on("selection",       () => { this.updateSelection(); this.renderSyncLinks(); });
     this.store.on("hover",           () => this.updateHover());
     this.store.on("mode",            () => this.updateMode());
   }
@@ -163,6 +165,86 @@ export class CanvasView {
     this.updateMode();
     this.updateSelection();
     this.updateHover();
+    this.renderSyncLinks();
+  }
+
+  _layerCenter(l) {
+    if (l.type === "connector" && l.from && l.to) {
+      return { x: (l.from.x + l.to.x) / 2, y: (l.from.y + l.to.y) / 2 };
+    }
+    const t = l.transform;
+    return { x: t.x + t.w / 2, y: t.y + t.h / 2 };
+  }
+
+  /* Draw sync-choreography indicators: a dashed link from each source
+     to its target, with a small "effect · delay" badge. Links touching
+     the current selection are emphasized. */
+  renderSyncLinks() {
+    const doc = this.store.state.document;
+    const svg = this.syncSvg;
+    svg.setAttribute("viewBox", `0 0 ${doc.viewport.w} ${doc.viewport.h}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("width", doc.viewport.w);
+    svg.setAttribute("height", doc.viewport.h);
+    svg.innerHTML = "";
+    if (this.store.state.mode !== "edit") return;
+
+    const sel = new Set(this.store.state.selection);
+    const links = [];
+    walk(doc.layers, (l) => {
+      if (l.sync?.source) {
+        const src = findLayer(doc.layers, l.sync.source);
+        if (src) links.push({ src, tgt: l, sync: l.sync });
+      }
+    });
+    if (!links.length) return;
+
+    const NS = "http://www.w3.org/2000/svg";
+    for (const { src, tgt, sync } of links) {
+      const a = this._layerCenter(src), b = this._layerCenter(tgt);
+      const active = sel.has(src.id) || sel.has(tgt.id);
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("class", "sync-link" + (active ? " is-active" : ""));
+
+      const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const nx = -dy / dist, ny = dx / dist;
+      const cX = midX + nx * dist * 0.12, cY = midY + ny * dist * 0.12;
+
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", `M ${a.x} ${a.y} Q ${cX} ${cY} ${b.x} ${b.y}`);
+      path.setAttribute("fill", "none");
+      path.setAttribute("class", "sync-link__path");
+      g.appendChild(path);
+
+      // Source dot
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("cx", a.x); dot.setAttribute("cy", a.y); dot.setAttribute("r", 5);
+      dot.setAttribute("class", "sync-link__src");
+      g.appendChild(dot);
+      // Target arrowhead (small)
+      const head = document.createElementNS(NS, "circle");
+      head.setAttribute("cx", b.x); head.setAttribute("cy", b.y); head.setAttribute("r", 4);
+      head.setAttribute("class", "sync-link__tgt");
+      g.appendChild(head);
+
+      // Badge (only when active, to avoid clutter)
+      if (active) {
+        const label = `${(sync.effect || "pulse").replace("-", " ")} · ${sync.delay || 0}ms`;
+        const fo = document.createElementNS(NS, "foreignObject");
+        const bw = 8 + label.length * 6.4, bh = 20;
+        fo.setAttribute("x", cX - bw / 2); fo.setAttribute("y", cY - bh / 2);
+        fo.setAttribute("width", bw); fo.setAttribute("height", bh);
+        fo.setAttribute("class", "sync-link__badge-fo");
+        const div = document.createElement("div");
+        div.className = "sync-link__badge";
+        div.textContent = label;
+        fo.appendChild(div);
+        g.appendChild(fo);
+      }
+      svg.appendChild(g);
+    }
   }
 
   _renderLayer(layer, parent) {
@@ -480,7 +562,15 @@ export class CanvasView {
         const ddy = ny - target.transform.y;
         target.transform.x = nx;
         target.transform.y = ny;
-        walk(target.children || [], n => { n.transform.x += ddx; n.transform.y += ddy; });
+        // Connectors are driven by from/to — translate both endpoints
+        if (target.type === "connector") {
+          if (target.from) { target.from.x += ddx; target.from.y += ddy; }
+          if (target.to)   { target.to.x += ddx;   target.to.y += ddy; }
+        }
+        walk(target.children || [], n => {
+          n.transform.x += ddx; n.transform.y += ddy;
+          if (n.type === "connector") { if (n.from) { n.from.x += ddx; n.from.y += ddy; } if (n.to) { n.to.x += ddx; n.to.y += ddy; } }
+        });
       }, "layer:transform");
       this._emitBatch(layer.id);
     };
@@ -503,6 +593,7 @@ export class CanvasView {
       walk(layer.children || [], (c) => this.updateNode(c.id));
     }
     this._alignHandles();
+    this.renderSyncLinks();
     this.store.emit("layer:transform", { id });
   }
 
@@ -538,6 +629,7 @@ export class CanvasView {
     this.root.classList.toggle("mode-edit", mode === "edit");
     this.root.classList.toggle("mode-preview", mode === "preview");
     this._alignHandles();
+    this.renderSyncLinks();
     if (mode !== "preview") this.flyout?.close();
     this.root.classList.remove("has-focus");
   }
