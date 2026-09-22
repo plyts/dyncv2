@@ -515,24 +515,28 @@ export class Inspector {
     this.store.transaction(s => {
       const l = findLayer(s.document.layers, id);
       if (l) l.name = name;
+      return { id };
     }, "update");
   }
   _patchTransform(id, patch) {
     this.store.transaction(s => {
       const l = findLayer(s.document.layers, id);
       if (l) Object.assign(l.transform, patch);
+      return { id };
     }, "layer:transform");
   }
   _patchStyle(id, patch) {
     this.store.transaction(s => {
       const l = findLayer(s.document.layers, id);
       if (l) Object.assign(l.style, patch);
+      return { id };
     }, "layer:style");
   }
   _patchMotion(id, patch) {
     this.store.transaction(s => {
       const l = findLayer(s.document.layers, id);
       if (l) Object.assign(l.motion, patch);
+      return { id };
     }, "update");
   }
   _patchContent(id, key, value, noHistory = false) {
@@ -540,6 +544,7 @@ export class Inspector {
     this.store[fn](s => {
       const l = findLayer(s.document.layers, id);
       if (l) { l.content = l.content || {}; l.content[key] = value; }
+      return { id };
     }, "update");
   }
   _duplicate(id) {
