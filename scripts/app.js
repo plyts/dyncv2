@@ -14,6 +14,7 @@ import { Exporter } from "./exporter.js";
 import { Importer } from "./importer.js";
 import { ShapeToolbar } from "./toolbar.js";
 import { makeShape, findLayer } from "./store.js";
+import { MotionEngine } from "./motion-engine.js";
 
 const initialState = {
   document: ragScene(),
@@ -69,6 +70,51 @@ canvas.hud   = hud;
 const toolbarEl = document.createElement("div");
 stageEl.append(toolbarEl);
 const shapeToolbar = new ShapeToolbar({ store, root: toolbarEl, canvas });
+
+// Motion Choreography Engine + timeline HUD
+const motion = new MotionEngine({ store, canvas });
+window.__motion = motion;
+motion.play();
+
+const tlHud = document.createElement("div");
+tlHud.className = "timeline-hud";
+tlHud.innerHTML = `
+  <button id="tlPlay" title="Lecture / pause">
+    <svg viewBox="0 0 14 14" width="12" height="12" fill="currentColor"><path d="M4 3h2v8H4zM8 3h2v8H8z"/></svg>
+  </button>
+  <div class="timeline-hud__pill"><span id="tlHead"></span></div>
+  <span class="timeline-hud__evt" id="tlEvt">IDLE</span>
+`;
+stageEl.append(tlHud);
+
+const tlHead = tlHud.querySelector("#tlHead");
+const tlEvt  = tlHud.querySelector("#tlEvt");
+const tlPlay = tlHud.querySelector("#tlPlay");
+let tlPlaying = true;
+tlPlay.onclick = () => {
+  tlPlaying = !tlPlaying;
+  if (tlPlaying) motion.play(); else motion.pause();
+  tlPlay.innerHTML = tlPlaying
+    ? `<svg viewBox="0 0 14 14" width="12" height="12" fill="currentColor"><path d="M4 3h2v8H4zM8 3h2v8H8z"/></svg>`
+    : `<svg viewBox="0 0 14 14" width="12" height="12" fill="currentColor"><path d="M4 3l7 4-7 4V3z"/></svg>`;
+};
+
+// Drive the master head from motion engine's phase (average of tracks)
+function drawTlHead() {
+  let head = 0, n = 0;
+  motion.tracks.forEach(t => { head += t.phase; n++; });
+  const pct = n ? (head / n) * 100 : 0;
+  tlHead.style.transform = `translateX(${pct * 2.14}px)`;
+  requestAnimationFrame(drawTlHead);
+}
+drawTlHead();
+
+motion.onAnyTrigger((event, payload) => {
+  const parts = event.split(":phase:");
+  tlEvt.textContent = "◆ " + (parts[1] || "").toUpperCase();
+  tlEvt.style.color = "var(--accent-hover)";
+  setTimeout(() => { tlEvt.style.color = "var(--ink-tertiary)"; tlEvt.textContent = "IDLE"; }, 250);
+});
 
 // Drag-drop images anywhere on the canvas
 ["dragover", "drop"].forEach(ev => stageEl.addEventListener(ev, (e) => e.preventDefault()));

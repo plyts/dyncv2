@@ -5,6 +5,8 @@ import { ICONS } from "./icons.js";
 import { findLayer } from "./store.js";
 import { RAG_ZONES } from "./preset-rag.js";
 import { mountMarkdownEditor } from "./markdown-editor.js";
+import { EFFECTS, TRIGGERS } from "./motion-engine.js";
+import { walk } from "./store.js";
 
 const EASINGS = [
   ["cubic-bezier(0.2,0,0,1)",        "Standard (Material 3)"],
@@ -384,6 +386,79 @@ export class Inspector {
       canv,
     ]));
     this._drawCurve(canv, m.easing || "cubic-bezier(0.2,0,0,1)");
+
+    // Choreography — sync with another layer
+    this._renderChoreography(layer);
+  }
+
+  _renderChoreography(layer) {
+    const sync = layer.sync || {};
+
+    // Build list of candidate sources — any other layer that has a period
+    // (dot, connector with animated dash, marching-ants borders).
+    const sources = [];
+    walk(this.store.state.document.layers, (l) => {
+      if (l.id === layer.id) return;
+      const hasPeriod = l.type === "dot" || l.type === "connector" || l.style?.animateDash;
+      if (hasPeriod) sources.push({ id: l.id, name: l.name || l.type });
+    });
+
+    const sourceOptions = [["", "— Aucun —"], ...sources.map(s => [s.id, s.name])];
+
+    const setSync = (patch) => {
+      this.store.transaction(s => {
+        const t = findLayer(s.document.layers, layer.id);
+        if (!t) return;
+        t.sync = { ...(t.sync || {}), ...patch };
+        if (!t.sync.source) t.sync = null;
+        return { id: layer.id };
+      }, "update");
+    };
+
+    const preview = () => {
+      if (!layer.sync?.effect) return;
+      window.__motion?.fireEffect(layer.id, layer.sync.effect, 0);
+    };
+
+    const declSyntax = layer.sync?.source
+      ? `syncWith: '${(sources.find(s => s.id === layer.sync.source)?.name || layer.sync.source)}',\ntrigger: '${layer.sync.trigger || "cycle:start"}',\ndelay:   ${layer.sync.delay || 0}ms,\neffect:  '${layer.sync.effect || "pulse-cascade"}'`
+      : `// Aucune synchronisation`;
+
+    this.body.append(this._group("Choreography", [
+      el("div", { style: { fontSize: "11px", color: "var(--ink-tertiary)", lineHeight: "1.55" },
+                  text: sources.length
+                    ? "Déclenche un effet sur ce calque quand un autre calque atteint un moment de son cycle."
+                    : "Aucune source disponible : crée un Point pulsé ou active « Marching ants » sur un autre calque." }),
+      this._row("Sync With", this._select(sourceOptions, sync.source || "", v => setSync({ source: v || null }))),
+      sync.source ? this._row("Trigger", this._select(TRIGGERS, sync.trigger || "cycle:start", v => setSync({ trigger: v }))) : null,
+      sync.source ? this._row("Delay", this._slider(sync.delay || 0, 0, 2000, 20, v => setSync({ delay: v }), "ms")) : null,
+      sync.source ? this._row("Effect", this._select(EFFECTS, sync.effect || "pulse-cascade", v => setSync({ effect: v }))) : null,
+      sync.source ? el("div", { style: { display: "flex", gap: "6px", paddingTop: "4px" } }, [
+        el("button", {
+          class: "btn btn--filled btn--sm", style: { flex: 1 },
+          text: "▶ Preview", onclick: preview,
+        }),
+        el("button", {
+          class: "btn btn--ghost btn--sm", style: { flex: 1 },
+          text: "Effacer", onclick: () => setSync({ source: null }),
+        }),
+      ]) : null,
+      sync.source ? el("pre", {
+        style: {
+          margin: "8px 0 0",
+          padding: "10px 12px",
+          background: "var(--surface-2)",
+          boxShadow: "var(--shadow-inset)",
+          borderRadius: "6px",
+          fontFamily: "var(--font-mono)",
+          fontSize: "11px",
+          color: "var(--ink-secondary)",
+          lineHeight: "1.55",
+          whiteSpace: "pre-wrap",
+        },
+        text: declSyntax,
+      }) : null,
+    ]));
   }
 
   _drawCurve(canv, easing) {

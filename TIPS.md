@@ -94,7 +94,60 @@ Un exemple concret pour tester tout ça de bout en bout.
 
 ---
 
-## 5. Debug rapide
+## 5. Choreography — synchronisation par Event Bus & Master Timeline
+
+Au-delà du simple accord des vitesses (§2), le Studio embarque un **moteur de chorégraphie** découplé : une **timeline maîtresse** (un seul `requestAnimationFrame`) fait tourner tous les cycles, et chaque calque animé **émet des signaux de phase** que d'autres calques peuvent écouter.
+
+### Le modèle mental
+
+- Un calque qui a un **cycle** (Point pulsé, ou n'importe quel calque avec « Marching ants ») devient une **source de tempo**.
+- À chaque tour, il émet des événements : `cycle:start` (0 %), `cycle:quarter` (25 %), `cycle:mid` (50 %), `cycle:three-quarter` (75 %), `cycle:end` (100 %).
+- N'importe quel autre calque peut **s'abonner** à l'un de ces moments, avec un **délai** et un **effet** à jouer.
+
+### Configuration déclarative
+
+Sélectionne le calque **cible** → onglet **Motion → Choreography** :
+
+| Champ        | Rôle                                                        |
+|:-------------|:------------------------------------------------------------|
+| **Sync With**| la source de tempo (l'autre calque à écouter)               |
+| **Trigger**  | le moment du cycle source qui déclenche l'effet             |
+| **Delay**    | attente en ms après le trigger                              |
+| **Effect**   | l'effet joué : `pulse-cascade`, `fade-chain`, `wobble`, `beam-scan`, `sync-start` |
+
+Le bloc gris en bas te montre la **syntaxe équivalente** en direct :
+
+```
+syncWith: 'Point pulsé',
+trigger:  'cycle:mid',
+delay:    200ms,
+effect:   'pulse-cascade'
+```
+
+### Recette « cascade » — un signal qui se propage
+
+1. Crée un **Point pulsé** (la source), `Vitesse` = 1.6 s.
+2. Sur le **bloc A**, Choreography → Sync With = *Point pulsé*, Trigger = `cycle:start`, Delay = **0 ms**, Effect = `pulse-cascade`.
+3. Sur le **bloc B**, mêmes réglages mais Delay = **150 ms**.
+4. Sur le **bloc C**, Delay = **300 ms**.
+
+→ À chaque battement du point, l'onde traverse A, puis B, puis C : une **cascade** parfaitement cadencée sur la timeline maîtresse.
+
+### Le bouton ▶ Preview
+
+Joue l'effet **une fois**, immédiatement, sans attendre le prochain cycle — pratique pour régler l'effet et le delay à l'œil.
+
+### Réversibilité
+
+Les effets sont des classes CSS transitoires (`fx-*`) : ils se retirent tout seuls à la fin de l'animation (`animationend`), donc l'état visuel **revient toujours** à sa valeur de repos. Rien à nettoyer, rien qui « colle ».
+
+### Dans l'atlas exporté
+
+Toute la chorégraphie part avec l'export : le fichier `.html` autonome embarque une **version compacte du moteur** (event bus + timeline) et rejoue exactement les mêmes synchronisations, sans aucune dépendance.
+
+---
+
+## 6. Debug rapide
 
 - **Le changement d'un paramètre ne se voit pas ?** → Depuis la v2 c'est du **live two-way binding** : chaque tick du slider redessine le calque à l'instant. Si tu n'en vois rien, vérifie que le calque n'est pas **masqué** (icône œil dans l'arborescence) ou **verrouillé**.
 - **Le connecteur ne suit pas quand je bouge un bloc ?** → Les extrémités du connecteur sont **indépendantes** des blocs. Sélectionne le connecteur, tu vois deux poignées bleues (from / to) : tu peux les glisser directement, ou déplacer le connecteur entier depuis son bounding box.

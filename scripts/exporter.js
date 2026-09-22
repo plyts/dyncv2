@@ -7,6 +7,7 @@ import { el, esc, copyText, downloadBlob, toast } from "./util.js";
 import { ICONS } from "./icons.js";
 import { walk } from "./store.js";
 import { RAG_ZONES } from "./preset-rag.js";
+import { ATLAS_ENGINE_JS } from "./motion-engine.js";
 
 export class Exporter {
   constructor({ store }) {
@@ -154,6 +155,7 @@ export class Exporter {
           from: layer.from || null,
           to:   layer.to || null,
           linkedTo: layer.linkedTo || [],
+          sync: layer.sync || null,
           sub,
           markdown: layer.content?.markdown || "",
         });
@@ -191,6 +193,7 @@ export class Exporter {
     from:  ${h.from ? JSON.stringify({ x: Math.round(h.from.x), y: Math.round(h.from.y) }) : "null"},
     to:    ${h.to   ? JSON.stringify({ x: Math.round(h.to.x),   y: Math.round(h.to.y) })   : "null"},
     linkedTo: ${JSON.stringify(h.linkedTo)},
+    sync: ${h.sync ? JSON.stringify(h.sync) : "null"},
     sub: ${JSON.stringify(h.sub)},
     md: ${JSON.stringify(h.markdown)}
   }`).join(",\n");
@@ -514,6 +517,18 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .atlas-image::before,.atlas-image::after{display:none!important}
 @keyframes dash-scroll{to{stroke-dashoffset:-24}}
 .hotspot.is-linked{box-shadow:0 0 0 2px color-mix(in srgb,#869dff 80%,transparent),0 0 40px -6px color-mix(in srgb,#869dff 55%,transparent)!important;background:color-mix(in srgb,#869dff 12%,transparent)!important}
+/* Motion choreography effects */
+.fx-pulse-cascade{animation:fx-pulse-cascade 700ms cubic-bezier(0.16,1,0.3,1)}
+@keyframes fx-pulse-cascade{0%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb,var(--zc,var(--accent)) 60%,transparent)}40%{transform:scale(1.08);box-shadow:0 0 0 22px color-mix(in srgb,var(--zc,var(--accent)) 22%,transparent)}100%{transform:scale(1);box-shadow:0 0 0 32px transparent}}
+.fx-fade-chain{animation:fx-fade-chain 900ms cubic-bezier(0.2,0,0,1)}
+@keyframes fx-fade-chain{0%,100%{opacity:1}50%{opacity:0.35}}
+.fx-wobble{animation:fx-wobble 700ms cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes fx-wobble{0%,100%{transform:rotate(0) scale(1)}25%{transform:rotate(-1.6deg) scale(1.02)}55%{transform:rotate(1.6deg) scale(1.02)}80%{transform:rotate(-0.5deg) scale(1)}}
+.fx-beam-scan{position:relative;overflow:hidden}
+.fx-beam-scan::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(100deg,transparent 40%,color-mix(in srgb,var(--zc,var(--accent)) 55%,transparent) 50%,transparent 60%);pointer-events:none;animation:fx-beam-scan 900ms cubic-bezier(0.2,0,0,1) forwards;mix-blend-mode:screen}
+@keyframes fx-beam-scan{from{transform:translateX(-110%)}to{transform:translateX(110%)}}
+.fx-sync-start{animation:fx-sync-start 320ms cubic-bezier(0.2,0,0,1)}
+@keyframes fx-sync-start{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.9);filter:brightness(1)}40%{box-shadow:0 0 0 6px rgba(255,255,255,0.35),0 0 22px 2px var(--zc,var(--accent));filter:brightness(1.35)}100%{box-shadow:0 0 0 0 transparent;filter:brightness(1)}}
 
 @media (max-width:720px){
   :root{--sp-panel:100vw;--topbar-h:48px}
@@ -682,6 +697,7 @@ HOTSPOTS.forEach((h,idx)=>{
     const speed = (h.style.dashSpeed || 1.2) + 's';
     const wrap = document.createElement('div');
     wrap.className = 'atlas-connector';
+    wrap.dataset.id = h.id;
     wrap.style.position = 'absolute';
     wrap.style.left  = pct(minX, IMG_W)+'%';
     wrap.style.top   = pct(minY, IMG_H)+'%';
@@ -792,6 +808,11 @@ themeBtn.onclick=()=>{
   setThemeIcon();
 };
 ['mousemove','keydown','click'].forEach(ev=>window.addEventListener(ev,()=>{setTimeout(()=>hint.classList.add('is-hidden'),4200)},{once:true}));
+
+/* Motion Choreography engine — decoupled event bus + master timeline */
+${ATLAS_ENGINE_JS}
+/* Tag shapes with data-id already done at build; start the choreography */
+if (window.__buildMotion) window.__buildMotion(HOTSPOTS);
 </script>
 </body>
 </html>`;

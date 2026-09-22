@@ -130,6 +130,7 @@ export const defaultLayer = (over = {}) => ({
   },
   content: { label: "", markdown: "" },
   linkedTo: [],               // ids of layers to highlight when this one is selected
+  sync: null,                 // { source, trigger, delay, effect, loop } — motion choreography
   zone: null,
   children: [],
   ...over,
