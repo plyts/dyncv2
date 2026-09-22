@@ -67,6 +67,20 @@ dyncv2/
 
 Aucun runtime, aucun bundler, aucune dépendance NPM. Uniquement des ES modules natifs et Google Fonts (Inter + JetBrains Mono).
 
-## Export
+## Export : le livrable final
 
-Le bouton `Export` génère un HTML/CSS autonome, prêt à intégrer, ou un JSON portable pour ré-hydratation ultérieure.
+Le bouton **Export → Atlas HTML** produit un **fichier HTML unique et autonome** (~900 KB, image en base64 incluse) qui est ton livrable partageable. Ce fichier :
+
+- Affiche ton image d'architecture au centre, avec les hotspots overlay-és en pourcentages (donc responsive).
+- Fait glisser un **panneau latéral glass** depuis la droite au clic sur une brique.
+- Injecte dynamiquement le **contenu Markdown** que tu as rédigé pour cette brique (rôle, techniques, quand l'utiliser, points d'attention).
+- Ergonomie moderne :
+  - **Hover** — wash coloré + bordure dashed + tag flottant.
+  - **Pulsation subtile** au repos pour signaler ce qui est cliquable.
+  - **Spotlight** au clic — l'image s'assombrit, la brique active garde son halo.
+  - **Navigation clavier** — `←` / `→` entre briques, `Esc` pour fermer.
+  - Chips de navigation par zone dans la topbar, prev/next dans le footer du panel.
+- Thème sombre/clair persisté, design tokens Apple HIG / Material 3.
+- **Zéro dépendance**, zéro build — le fichier tourne tel quel dans un navigateur.
+
+L'export `JSON` sérialise la composition pour la ré-importer plus tard et poursuivre l'édition.
