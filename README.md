@@ -1,72 +1,46 @@
-# Dyncv Studio
+# RAG Atlas
 
-Éditeur visuel modulaire pour transformer n'importe quelle architecture logicielle en expérience interactive léchée (type Figma / Adobe / Apple Pro Apps).
+Un **fichier HTML unique et autonome** qui transforme l'image d'architecture d'un RAG avancé en expérience interactive : chaque bloc du schéma est cliquable, un panneau latéral glisse depuis la droite avec la fiche Markdown détaillée du composant.
 
-## Démarrage
+Aucune dépendance à installer, aucun build. Ouvre `index.html` dans un navigateur récent — ou sers le dossier avec `python3 -m http.server 8080`.
 
-```sh
-# Ouvre l'app localement — aucun build, aucune dépendance
-python3 -m http.server 8080
-# → http://localhost:8080/
+## Ce qu'il contient
+
+- **Image de base** — le schéma RAG complet (Query Construction · Translation · Routing · Indexing · Retrieval · Generation), embedded en base64 pour rester portable.
+- **15 hotspots** positionnés en % par-dessus l'image (chunks, HyDE, Self-RAG, RAPTOR…). Chacun a sa fiche Markdown : rôle, techniques, quand l'utiliser, points d'attention.
+- **6 zones colorées** avec chips de navigation dans la barre du haut.
+- **Side-panel glass** qui slide en douceur, backdrop-blur, accent chromatique par zone, contenu Markdown rendu (titres, listes, code, blockquote colorée, liens).
+- **Effets de survol soignés** — halo, ring, tag flottant, pulsation subtile au repos pour indiquer ce qui est cliquable ; spotlight qui assombrit le reste à la sélection.
+- **Navigation clavier** — `←` / `→` entre briques, `Esc` pour fermer.
+- **Thème clair / sombre** persisté (localStorage).
+- **Related links** — chips "Explorer aussi" en bas de chaque fiche.
+
+## Design
+
+Tokens inspirés d'Apple HIG et Material 3 : dark par défaut, surfaces vitrées, Inter + JetBrains Mono, courbes de Bézier soignées (`cubic-bezier(0.2, 0, 0, 1)`, `cubic-bezier(0.34, 1.56, 0.64, 1)` pour les rebonds), micro-espacements millimétrés, aucune surcharge visuelle.
+
+## Structure du fichier
+
+```
+index.html
+├── <style> …tokens + composants (~24 KB)
+├── <body>  …app shell (topbar + stage + panel)
+└── <script>
+    ├── ZONES           # 6 zones + couleurs + coord de titre
+    ├── HOTSPOTS        # 15 briques avec fiches Markdown
+    ├── md()            # parser Markdown minimal
+    ├── buildUI()       # zone chips + labels + hotspots
+    ├── openHotspot()   # ouverture animée du panel
+    └── keyboard/theme  # raccourcis + persistance
 ```
 
-Rien à installer. Chrome, Firefox et Safari récents fonctionnent tel quel.
-
-## Piliers
-
-1. **Modularité universelle** — chaque objet, sous-objet, zone ou div est un calque indépendant, imbricable et manipulable.
-2. **Mode Édition ⇄ Preview** — bascule instantanée entre l'atelier et l'expérience animée finale (raccourci `E` / `P`).
-3. **Smart Slicing** — pré-découpe automatique en grille de zones interactives sur une image importée.
-4. **Onboarding & Flow** — hotspots pulsants, halos ultra-fins, focus/spotlight, transitions cubic-bezier.
-5. **Inspector Pro** — panneau latéral segmenté (Propriétés · Style · Motion · Docs).
-6. **Fine-tuning CSS** — X, Y, W, H, rotation, radius, opacité, box-shadow, backdrop-filter, easings, durées, hover states.
-7. **Éditeur Markdown riche** — split view, toolbar (H1-H3, gras, italique, code, listes, blockquote, HR, lien), aperçu live.
+Total : ~890 KB dont 850 KB pour l'image base64.
 
 ## Raccourcis
 
 | Action | Raccourci |
 |--|--|
-| Panorama canvas | `Space` + drag |
-| Zoom | `Cmd/Ctrl` + molette · `Cmd/Ctrl` + `+` / `−` |
-| Fit to screen | `Cmd/Ctrl` + `0` |
-| Édition / Preview | `E` / `P` |
-| Annuler / Rétablir | `Cmd/Ctrl` + `Z` / `Shift+Z` |
-| Dupliquer | `Cmd/Ctrl` + `D` |
-| Supprimer | `Delete` |
-| Déplacement fin | `←` `→` `↑` `↓` (shift = 10 px) |
-
-## Architecture
-
-```
-dyncv2/
-├── index.html
-├── styles/
-│   ├── tokens.css          # Design tokens (Material 3 / Apple HIG inspired)
-│   ├── base.css            # Reset + primitives
-│   ├── layout.css          # App shell (grid : topbar / workspace / statusbar)
-│   ├── controls.css        # Buttons, inputs, sliders, color swatches, modals
-│   ├── canvas.css          # Stage + nodes + handles + preview flyout
-│   ├── layers.css          # Layers tree
-│   └── markdown-editor.css # Rich md composer
-└── scripts/
-    ├── app.js              # entry: wires everything
-    ├── store.js            # pub/sub + history
-    ├── util.js             # DOM helpers, markdown parser, toast, download
-    ├── icons.js            # icon set (14×14 outline)
-    ├── preset-rag.js       # preset RAG architecture (6 zones + 15 hotspots)
-    ├── canvas.js           # WYSIWYG surface + drag/resize/rotate
-    ├── canvas-hud.js       # zoom cluster + info pill
-    ├── layers-tree.js      # collapsible hierarchy
-    ├── inspector.js        # 4-tab property inspector
-    ├── markdown-editor.js  # rich toolbar + live preview
-    ├── topbar.js           # brand + title + mode + actions
-    ├── preview-flyout.js   # sliding docs panel (preview mode)
-    ├── exporter.js         # HTML / CSS / JSON export
-    └── importer.js         # image / JSON / smart-slice
-```
-
-Aucun runtime, aucun bundler, aucune dépendance NPM. Uniquement des ES modules natifs et Google Fonts (Inter + JetBrains Mono).
-
-## Export
-
-Le bouton `Export` génère un HTML/CSS autonome, prêt à intégrer, ou un JSON portable pour ré-hydratation ultérieure.
+| Ouvrir la fiche d'une brique | Clic (ou chip de zone en topbar) |
+| Naviguer entre briques | `←` `→` |
+| Fermer le panel | `Esc` ou clic hors du schéma |
+| Basculer le thème | Bouton lune/soleil en haut à droite |
